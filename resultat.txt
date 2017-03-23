@@ -1,0 +1,42 @@
+MPI task 0 has started...
+MPI task 1 has started...
+MPI task 2 has started...
+Rank 0002: committing suicide
+MPI task 3 has started...
+
+
+Sent 4000000 elements to task 1 offset= 4000000
+Task 1 mysum = 4.884048e+13
+nombre des echecs est 1 
+nombre des echecs est 1 
+nombre des echecs est 1 
+Processus 3 en Global et 2 en Shrinked comm 
+Processus 0 en Global et 0 en Shrinked comm 
+Processus 1 en Global et 1 en Shrinked comm 
+done spawn 
+done spawn 
+done spawn 
+MPI task 0 has started...
+[uaz13:12508] *** Process received signal ***
+[uaz13:12508] Signal: Floating point exception (8)
+[uaz13:12508] Signal code: Integer divide-by-zero (1)
+[uaz13:12508] Failing at address: 0x401510
+[uaz13:12508] [ 0] /lib/x86_64-linux-gnu/libpthread.so.0(+0x11390) [0x7f4234f74390]
+[uaz13:12508] [ 1] res(main+0x10a) [0x401510]
+[uaz13:12508] [ 2] /lib/x86_64-linux-gnu/libc.so.6(__libc_start_main+0xf0) [0x7f4234bba830]
+[uaz13:12508] [ 3] res(_start+0x29) [0x401339]
+[uaz13:12508] *** End of error message ***
+nombre des echecs est 0 
+nombre des echecs est 0 
+no merge 
+nombre des echecs est 0 
+nombre des echecs est 0 
+nombre des echecs est 0 
+[uaz13:12504] *** An error occurred in MPI_comm_size
+[uaz13:12504] *** reported by process [350617601,0]
+[uaz13:12504] *** on communicator MPI_COMM_WORLD
+[uaz13:12504] *** MPI_ERR_COMM: invalid communicator
+[uaz13:12504] *** MPI_ERRORS_ARE_FATAL (processes in this communicator will now abort,
+[uaz13:12504] ***    and potentially your MPI job)
+[uaz13:12503] 2 more processes have sent help message help-mpi-errors.txt / mpi_errors_are_fatal
+[uaz13:12503] Set MCA parameter "orte_base_help_aggregate" to 0 to see all help / error messages
