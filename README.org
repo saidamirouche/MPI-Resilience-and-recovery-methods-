@@ -1,0 +1,150 @@
+* Saïd ulfm framework
+
+Visit the [[https://github.com/samirouche/ft_uflm][github said]] project and clone it:
+#+begin_src 
+git clone https://github.com/samirouche/ft_uflm.git
+#+end_src
+
+* Install and test ulfm docker image
+
+We follow this tutorial: http://fault-tolerance.org/2017/02/10/sc16-tutorial/
+
+** DONE Install docker on a Debian sid machine
+
+Here is the tutorial to install docker on Debian:
+https://docs.docker.com/engine/installation/linux/debian/#install-using-the-repository
+
+On my sid machine, however, docker-ce install failed and the docker.io from the
+baseline sid distribution directely worked.
+
+*** Check debian release
+What is my distribution?
+#+begin_src sh :results output :exports both
+lsb_release -cs
+#+end_src
+
+#+results:
+: sid
+
+*** Debian packages pre-requisites
+#+begin_src sh :session ulfm :results output :exports both 
+sudo aptitude install apt-transport-https ca-certificates curl software-properties-common
+#+end_src
+
+*** Debian repository for docker-ce install
+
+#+begin_src sh :session ulfm :results output :exports both 
+sudo aptitude update 
+sudo apt-key fingerprint 0EBFCD88
+sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/debian  $(lsb_release -cs) stable"
+sudo aptitude update 
+#+end_src
+
+*** Install docker package
+According to the [[https://docs.docker.com/engine/installation/linux/debian/#install-using-the-repository][docker tutorial for debian]], we should install docker-ce
+package:
+#+begin_example
+sudo apt-get purge docker-ce
+#+end_example
+
+However, this failed on my sid distribution and I simply installed the docker.io
+package:
+#+begin_src sh :session ulfm :results output :exports both 
+sudo aptitude install docker.io
+#+end_src
+
+*** Hello world test
+#+begin_src sh :session ulfm :results output :exports both 
+sudo docker run hello-world
+#+end_src
+
+*** Set privileges
+#+begin_src sh :results output :exports both
+sudo usermod -a -G docker username
+su - username
+#+end_src
+
+** DONE Deploy ulfm docker image
+
+*** Get ulfm docker image
+#+begin_src sh :session ulfm :results output :exports both 
+ULFMREP=/tmp/ulfm
+mkdir $ULFMREP
+cd $ULFMREP
+wget http://fault-tolerance.org/downloads/docker-ftmpi.sc16tutorial.tar.xz
+tar xf docker-ftmpi.sc16tutorial.tar.xz 
+#+end_src
+
+ #+results:
+ #+begin_example
+
+$ $ --2017-03-30 19:23:18--  http://fault-tolerance.org/downloads/docker-ftmpi.sc16tutorial.tar.xz
+Résolution de fault-tolerance.org (fault-tolerance.org)… 160.36.131.221
+Connexion à fault-tolerance.org (fault-tolerance.org)|160.36.131.221|:80… connecté.
+requête HTTP transmise, en attente de la réponse… 200 OK
+Taille : 39673176 (38M) [application/x-tar]
+Sauvegarde en : « docker-ftmpi.sc16tutorial.tar.xz »
+[                    ]       0  --.-KB/s                        docker-ftm   0%[                    ]  43,55K   183KB/s                       docker-ftmp   0%[                    ] 172,23K   361KB/s                      docker-ftmpi   1%[                    ] 554,03K   775KB/s                     docker-ftmpi.   4%[                    ]   1,64M  1,72MB/s                    docker-ftmpi.s   9%[>                   ]   3,56M  3,09MB/s                   docker-ftmpi.sc  15%[==>                 ]   5,78M  4,27MB/s                  docker-ftmpi.sc1  19%[==>                 ]   7,53M  4,84MB/s                 docker-ftmpi.sc16  21%[===>                ]   8,21M  4,66MB/s                docker-ftmpi.sc16t  22%[===>                ]   8,64M  4,41MB/s               docker-ftmpi.sc16tu  25%[====>               ]   9,79M  4,53MB/s               ocker-ftmpi.sc16tut  31%[=====>              ]  12,00M  5,08MB/s               cker-ftmpi.sc16tuto  37%[======>             ]  14,21M  5,55MB/s               ker-ftmpi.sc16tutor  43%[=======>            ]  16,45M  5,96MB/s               er-ftmpi.sc16tutori  49%[========>           ]  18,59M  6,28MB/s               r-ftmpi.sc16tutoria  55%[==========>         ]  20,83M  6,59MB/s    eta 3s     -ftmpi.sc16tutorial  60%[===========>        ]  23,08M  6,87MB/s    eta 3s     ftmpi.sc16tutorial.  66%[============>       ]  25,31M  7,60MB/s    eta 3s     tmpi.sc16tutorial.t  72%[=============>      ]  27,56M  8,34MB/s    eta 3s     mpi.sc16tutorial.ta  78%[==============>     ]  29,81M  9,20MB/s    eta 3s     pi.sc16tutorial.tar  84%[===============>    ]  31,93M  9,40MB/s    eta 1s     i.sc16tutorial.tar.  90%[=================>  ]  34,18M  9,53MB/s    eta 1s     .sc16tutorial.tar.x  96%[==================> ]  36,42M  9,52MB/s    eta 1s     docker-ftmpi.sc16tu 100%[===================>]  37,83M  9,79MB/s    in 4,7s    
+
+2017-03-30 19:23:22 (8,07 MB/s) — « docker-ftmpi.sc16tutorial.tar.xz » sauvegardé [39673176/39673176]
+ #+end_example
+
+*** Load the pre-compiled ULFM Docker machine into your Docker installation
+#+begin_src sh :session ulfm :results output :exports both 
+sudo docker load < ftmpi_ulfm-1.1.tar
+. dockervars.sh load
+#+end_src
+
+** DONE Test an example
+
+*** Compile examples 
+
+#+begin_src sh :session ulfm :results output :exports both 
+cd ulfm-testing/tutorial
+make
+#+end_src
+
+*** Test
+
+Launch mpi with ulfm enabled.
+
+Note the special `-am ft-enable-mpi` parameter; if this parameter is omitted,
+the non-fault tolerant version of Open MPI is launched and applications
+containing failures will automatically abort.
+
+#+begin_src sh :results output :exports both
+mpirun -am ft-enable-mpi -np 10 ex2.1.revoke
+#+end_src
+
+
+
+* testing Ulfm examples
+
+In order to start handling and understanding deeply ULFM, i started analysing, compiling and running [[http://fault-tolerance.org/downloads/tutorial-sc16.tgz][the examples in ULFM page]]
+from the basic to revoke communicator and reconstruct onother healthy one that contains the same ranks.
+
+** Commenting examples and results
+
+
+*** Determine the ranks of the failed processus
+
+the examples [[https://bitbucket.org/icldistcomp/ulfm-testing/src/32117643cd4c082a6906f97e377bd98552fe3d76/tutorial/ex0.3.report_one.c?at=default][Single failed]], [[https://bitbucket.org/icldistcomp/ulfm-testing/src/32117643cd4c082a6906f97e377bd98552fe3d76/tutorial/ex0.4.report_many.c?at=default][Multiple failed]], [[https://bitbucket.org/icldistcomp/ulfm-testing/src/32117643cd4c082a6906f97e377bd98552fe3d76/tutorial/ex0.5.undisturbed.c?at=default&fileviewer=file-view-default][Exchange value between 2 consecutive process]], [[https://bitbucket.org/icldistcomp/ulfm-testing/src/32117643cd4c082a6906f97e377bd98552fe3d76/tutorial/ex0.9.recv_any_src.c?at=default][recieve from anysource]] are slightly differents
+in the behave (sample MPI basic operations) but for the ULFM part, they have a common behave which is to determine the ranks for the failed processus.
+
+we took the examples [[https://bitbucket.org/icldistcomp/ulfm-testing/src/32117643cd4c082a6906f97e377bd98552fe3d76/tutorial/ex0.3.report_one.c?at=default][single failed]] and [[https://bitbucket.org/icldistcomp/ulfm-testing/src/32117643cd4c082a6906f97e377bd98552fe3d76/tutorial/ex0.4.report_many.c?at=default][multiple failed]] that demonstrate the way ULFM proceed for detecting and knowing the failure ranks,
+after setting an error handler and killing one or more process, a sample test is set that kills the last one in the first example and half of the remaing process
+in the second examples, one enterring the error handler, it calls MPIX_Comm_failure and MPIX_Comm_failure_get_acked to give a acknowledge of the failed process 
+on the communicator and put them in a groupe, and in the same time create a groupe that contains the original communicator in ordre to determine the failed ranks 
+using  MPI_Group_translate_ranks, resulting an array of failed ranks.
+
+ 
+#+begin_example
+mpirun -am ft-enable-mpi -np 4 ex0.3.report_one
+#+end_example
+
+#+begin_example
+mpirun -am ft-enable-mpi -np 8 ex0.4.report_many
+#+end_example
+
+*** TODO Revoke and shrink infected communicator
+
