@@ -233,7 +233,7 @@ char **argv;
     do {
 
 
-      T1 = MPI_Wtime();
+      T1 = MPI_Wtime();             // Start measuring the time
 
 
       
@@ -311,7 +311,7 @@ char **argv;
 
 	T2 = MPI_Wtime();
 
-	time_spent = time_spent + (T2 - T1);
+	time_spent = time_spent + (T2 - T1);   // measuring the time for each iteration and gathering it for the total time elapse
 	
 	gdiffnorm = sqrt( gdiffnorm );
 
@@ -464,7 +464,7 @@ char **argv;
 	}
 
 	T2 = MPI_Wtime();
-	time_spent = time_spent + (T2 - T1) ;
+	time_spent = time_spent + (T2 - T1) ;  // measuring the time for each iteration and gathering it for the total time elapse
 	
 	gdiffnorm = sqrt( gdiffnorm );
 
