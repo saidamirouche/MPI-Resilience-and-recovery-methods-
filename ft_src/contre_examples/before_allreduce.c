@@ -400,6 +400,13 @@ char **argv;
 
       }
       
+	    // KILLING SENARIO BEFORE ALL REDUCE
+	if ((rank == 3) && (itcnt == 600)) {
+
+	    exit(0);
+	 
+	}
+
 	/* Compute new values (but not on boundary) */
 	itcnt ++;
 	diffnorm = 0;
@@ -446,12 +453,6 @@ char **argv;
 
 	
         
-
-	if ((rank == 3) && (itcnt == 600)) {
-
-	    exit(0);
-	 
-	}
 
 
 	
