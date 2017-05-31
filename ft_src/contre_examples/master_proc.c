@@ -430,7 +430,7 @@ char **argv;
 	}
 
 
-	
+	// KILLING THE PROCESS 0 
 
 	if ((rank == 0) && (itcnt == 200)) {
 
