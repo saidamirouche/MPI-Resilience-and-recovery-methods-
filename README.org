@@ -157,6 +157,14 @@ once finish the repair function, another broadcast is done but now to all the su
 
 * Preliminary personal tests
 
+*** download FT_ULFM 
+
+#+begin_src 
+git clone https://github.com/samirouche/ft_uflm.git
+#+end_src
+
+*** compile the src codes
+
  #+begin_example
 cd Resilient_version/
  . dockervars.sh load
@@ -335,7 +343,7 @@ support is to manage to rebuilt the communicator and continue working after a re
 of the different typs of recovery, just to compare the efficacity of the methods after reconstructing the communicator, the condition of convergency is set to 10.e-14 and we compare 
 number of iterations which is necessary for that.
 
-this graph shows the different behavor of the recovery methods (LI, Reset, ER) compared with the Nan-fault methode (NF) when killing 4 processes
+this plot was done by [[https://doc.ubuntu-fr.org/octave][OCTAVE]], and it shows the different behavor of the recovery methods (LI, Reset, ER) compared with the Nan-fault methode (NF) when killing 4 processes
 
 #+ATTR_HTML:width 75% :height 75% 
 [[https://github.com/samirouche/ft_uflm/blob/master/Results_resilience/graph.jpg]]
