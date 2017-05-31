@@ -156,6 +156,22 @@ once finish the repair function, another broadcast is done but now to all the su
 
 
 * Preliminary personal tests
+
+*** download FT_ULFM 
+
+#+begin_src 
+git clone https://github.com/samirouche/ft_uflm.git
+#+end_src
+
+*** compile the src codes
+
+ #+begin_example
+cd ft_uflm/Resilient_version/
+ . dockervars.sh load
+make
+#+end_example  
+
+
 ** First personal example using ULFM
 
 After seeing all the examples in the tutorial provided by the ULFM team, and analysing them, they have a common point is that the part for fixing failures is set always as a function
@@ -165,12 +181,12 @@ the failure processes is spawned and added to the shrinked communicator.
 each time a process enters that function, if its a survival it will take the same ranks as before and then continue its works, if its new, it will get its assignement rank from the 
 rank 0 and it will join its work.
 
-[[https://github.com/samirouche/ft_uflm/blob/master/example2.c][my example]], is a simple broadcast after killing a process, and then calling the function that repairs, once it shrinks, revokes and spawns the failure processes, it does onother broadcast
-, results are [[https://github.com/samirouche/ft_uflm/blob/master/resultats_exemple.txt][here]], its goal is to apply ULFM and reconstruct a communicator that contains the same rank assignement as the original one,
+[[https://github.com/samirouche/ft_uflm/blob/master/Resilient_version/ulfm_ranks.c][my example]], is a simple broadcast after killing a process, and then calling the function that repairs, once it shrinks, revokes and spawns the failure processes, it does onother broadcast
+, results are [[https://github.com/samirouche/ft_uflm/blob/master/Results_resilience/rank.txt][here]], its goal is to apply ULFM and reconstruct a communicator that contains the same rank assignement as the original one,
 
 
  #+begin_example
-mpirun -am ft-enable-mpi -np 4 example2
+mpirun -am ft-enable-mpi -np 4 ulfm_ranks
 #+end_example  
 
 
@@ -181,13 +197,13 @@ mpirun -am ft-enable-mpi -np 4 example2
 
 The main senario is to do a simple summation using MPI, then we kill random process, after once the master rank send the job's chunks to the other ranks and it detects an error of type 
 "MPI_ERR_PROC_FAILED" or "MPI_ERR_PENDING" it calls the repair function which supposed to shrink the communicator that contain the failure processes, spawn and merge them with the shrinked communicator
-in a way that each process take its old rank, i managed to implement this in [[https://github.com/samirouche/ft_uflm/blob/master/sumulfm_fail.c][this failed version]], its failed because it works just with 2 processes, once i want to test it with more then
+in a way that each process take its old rank, i managed to implement this a failed version, its failed because it works just with 2 processes, once i want to test it with more then
 2 processes it blocks and don't finish the work, because with 2 processes once the master one kills the other one it can repair it because there is no other processes that are working,
 but with more than 2 processes when it entre to the repair part the other remainin processes block while working.
 
 In order to avoid this problem and instead of checking each send from the master, i put MPI_Barrier and put a check on it, if there is an error of the previous mentioned types, it will call
 the repair's function, once its repaired it will goes to the recovery part after we are assured that no process is dead, it re-sends again the job's chunks to all the ranks and finish
-the job successufly , [[https://github.com/samirouche/ft_uflm/blob/master/sumulfm.c][this version]] works for any number of processes and illustrats the senario mentionned in the begening.
+the job successufly , [[https://github.com/samirouche/ft_uflm/blob/master/Resilient_version/sumulfm.c][this version]] works for any number of processes and illustrats the senario mentionned in the begening.
 
  #+begin_example
 mpirun -am ft-enable-mpi -np 4 sumulfm
@@ -195,7 +211,7 @@ mpirun -am ft-enable-mpi -np 4 sumulfm
 
 *** Example   
 
-[[https://github.com/samirouche/ft_uflm/blob/master/resultat_summation.txt][This example]] illustrates the summation of an array using MPI and ULFM with 8 processes.
+[[https://github.com/samirouche/ft_uflm/blob/master/Results_resilience/sum.txt][This results]]  illustrates the summation of an array using MPI and ULFM with 8 processes.
 
 * More comprehensive examples
 
@@ -266,7 +282,7 @@ For all the next numerical algorithms we use as a reference for MPIX [[https://b
 *** Resilient summation
 
 for the summation of an array, we used just a Reset method,  for [[https://computing.llnl.gov/tutorials/mpi/samples/C/mpi_array.c][our previous example]], we combined it with our [[https://bitbucket.org/icldistcomp/ulfm-testing/src/32117643cd4c082a6906f97e377bd98552fe3d76/tutorial/ex4.1.respawn.c?at=default&fileviewer=file-view-default][MPIX reference code]] with some modifications, we obtained [[https://github.com/samirouche/ft_uflm/blob/master/sumulfm.c][this resilient version]]
-when executing with 8 processes, [[https://github.com/samirouche/ft_uflm/blob/master/resultat_summation.txt][it gives this results]].
+when executing with 8 processes, [[https://github.com/samirouche/ft_uflm/blob/master/Results_resilience/sum.txt][it gives this results]]
 
  #+begin_example
 mpirun -am ft-enable-mpi -np 4 sumulfm
@@ -280,9 +296,9 @@ we did the 3 previous mentionned ways :
 
 **** DONE Reset   
 
-The reset method of the jacobi's iterations is presented in [[https://github.com/samirouche/ft_uflm/blob/master/reset_jacobi.c][This Code]], it doesn't necessite a numerical recovery for dynamic data but only static data as presented in the mentionned example
+The reset method of the jacobi's iterations is presented in [[https://github.com/samirouche/ft_uflm/blob/master/Resilient_version/reset_jacobi.c][This code]], it doesn't necessite a numerical recovery for dynamic data but only static data as presented in the mentionned example
 
-the execution of this code with 4 processes gave us [[https://github.com/samirouche/ft_uflm/blob/master/Jacobi_reset_resultats.txt][theses results]].
+the execution of this code with 4 processes gave us [[https://github.com/samirouche/ft_uflm/blob/master/Results_resilience/reset.txt][theses results]].
 
  #+begin_example
 mpirun -am ft-enable-mpi -np 4 reset_jacobi
@@ -291,8 +307,8 @@ mpirun -am ft-enable-mpi -np 4 reset_jacobi
 
 **** DONE Enforced Restart 
 
-The Checkpoint/Restart methode of the jacobi's iterations illustrated [[https://github.com/samirouche/ft_uflm/blob/master/jacobi_check_restart.c][on this code]], it doesn't necessite a numerical recovery of static data because it works only with the dynamic data after
-the first iteration, the results of execution with 4 processes can be found [[https://github.com/samirouche/ft_uflm/blob/master/Jacobi_ER_resultats.txt][here]].
+The Checkpoint/Restart methode of the jacobi's iterations illustrated [[https://github.com/samirouche/ft_uflm/blob/master/Resilient_version/jacobi_check_restart.c][on this code]], it doesn't necessite a numerical recovery of static data because it works only with the dynamic data after
+the first iteration, the results of execution with 4 processes can be found [[https://github.com/samirouche/ft_uflm/blob/master/Results_resilience/er.txt][here]].
 
  #+begin_example
 mpirun -am ft-enable-mpi -np 4 jacobi_check_restart
@@ -305,7 +321,7 @@ once we do it, we recover the static data for the failed processes and we iterat
 
 after the interpolation, we continue the work in parallel by iterating until it converges or until it get to a stopping condition.
 
-[[https://github.com/samirouche/ft_uflm/blob/master/LI_jacobi.c][This Code]] illustrates the linear interpolation for the jacobi example, [[https://github.com/samirouche/ft_uflm/blob/master/Jacobi_LI_resultats.txt][These results]] were obtained in the execution of the code with 
+[[https://github.com/samirouche/ft_uflm/blob/master/Resilient_version/LI_jacobi.c][This code]] illustrates the linear interpolation for the jacobi example, [[https://github.com/samirouche/ft_uflm/blob/master/Results_resilience/li.txt][These results]]  were obtained in the execution of the code with 
 
 #+begin_example
 mpirun -am ft-enable-mpi -np 4 LI_jacobi 
@@ -327,14 +343,21 @@ support is to manage to rebuilt the communicator and continue working after a re
 of the different typs of recovery, just to compare the efficacity of the methods after reconstructing the communicator, the condition of convergency is set to 10.e-14 and we compare 
 number of iterations which is necessary for that.
 
-this graph shows the different behavor of the recovery methods (LI, Reset, ER) compared with the Nan-fault methode (NF) when killing 4 processes
+this plot was done by [[https://doc.ubuntu-fr.org/octave][OCTAVE]], and it shows the different behavor of the recovery methods (LI, Reset, ER) compared with the Nan-fault methode (NF) when killing 4 processes
 
 #+ATTR_HTML:width 75% :height 75% 
-[[https://github.com/samirouche/ft_uflm/blob/master/graph.jpg]]
+[[https://github.com/samirouche/ft_uflm/blob/master/Results_resilience/graph.jpg]]
 
 **** Questions about ULFM
 
-Some errors who appear in this situations: 
+these errors
+
+#+begin_example
+[b83ce537a2eb:00001] [[730,0],0] ORTE_ERROR_LOG: A message is attempting to be sent to a process whose contact information is unknown in file base/odls_base_default_fns.c at line 2069
+[b83ce537a2eb:00001] [[730,0],0] ORTE_ERROR_LOG: A message is attempting to be sent to a process whose contact information is unknown in file orted/orted_comm.c at line 1174
+#+end_example
+
+ appear in this different situations: 
 
 - Killing the same processes for the second time, despite that the other processes has knowledge for the victim rank each time ( broadcasting it each time )
 - Killing a process before the All_Reduce step.
