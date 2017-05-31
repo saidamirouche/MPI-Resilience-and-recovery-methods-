@@ -88,7 +88,7 @@ Sauvegarde en : « docker-ftmpi.sc16tutorial.tar.xz »
 
 2017-03-30 19:23:22 (8,07 MB/s) — « docker-ftmpi.sc16tutorial.tar.xz » sauvegardé [39673176/39673176]
  #+end_example
-
+ 
 *** Load the pre-compiled ULFM Docker machine into your Docker installation
 #+begin_src sh :session ulfm :results output :exports both 
 sudo docker load < ftmpi_ulfm-1.1.tar
@@ -118,22 +118,19 @@ mpirun -am ft-enable-mpi -np 10 ex2.1.revoke
 
 
 
-* testing Ulfm examples
+* Testing ulfm examples
 
-In order to start handling and understanding deeply ULFM, i started analysing, compiling and running [[http://fault-tolerance.org/downloads/tutorial-sc16.tgz][the examples in ULFM page]]
-from the basic to revoke communicator and reconstruct onother healthy one that contains the same ranks.
+  In order to start handling and understanding deeply ULFM, i started analysing, compiling and running [[http://fault-tolerance.org/downloads/tutorial-sc16.tgz][the examples in ULFM page]]
+  from the basic to revoke communicator and reconstruct onother healthy one that contains the same ranks.
 
-** Commenting examples and results
-
-
-*** Determine the ranks of the failed processus
+** DONE Determine the ranks of the failed processus
 
 the examples [[https://bitbucket.org/icldistcomp/ulfm-testing/src/32117643cd4c082a6906f97e377bd98552fe3d76/tutorial/ex0.3.report_one.c?at=default][Single failed]], [[https://bitbucket.org/icldistcomp/ulfm-testing/src/32117643cd4c082a6906f97e377bd98552fe3d76/tutorial/ex0.4.report_many.c?at=default][Multiple failed]], [[https://bitbucket.org/icldistcomp/ulfm-testing/src/32117643cd4c082a6906f97e377bd98552fe3d76/tutorial/ex0.5.undisturbed.c?at=default&fileviewer=file-view-default][Exchange value between 2 consecutive process]], [[https://bitbucket.org/icldistcomp/ulfm-testing/src/32117643cd4c082a6906f97e377bd98552fe3d76/tutorial/ex0.9.recv_any_src.c?at=default][recieve from anysource]] are slightly differents
 in the behave (sample MPI basic operations) but for the ULFM part, they have a common behave which is to determine the ranks for the failed processus.
 
 we took the examples [[https://bitbucket.org/icldistcomp/ulfm-testing/src/32117643cd4c082a6906f97e377bd98552fe3d76/tutorial/ex0.3.report_one.c?at=default][single failed]] and [[https://bitbucket.org/icldistcomp/ulfm-testing/src/32117643cd4c082a6906f97e377bd98552fe3d76/tutorial/ex0.4.report_many.c?at=default][multiple failed]] that demonstrate the way ULFM proceed for detecting and knowing the failure ranks,
 after setting an error handler and killing one or more process, a sample test is set that kills the last one in the first example and half of the remaing process
-in the second examples, one enterring the error handler, it calls MPIX_Comm_failure and MPIX_Comm_failure_get_acked to give a acknowledge of the failed process 
+in the second examples, once enterring the error handler, it calls MPIX_Comm_failure and MPIX_Comm_failure_get_acked to give a acknowledge of the failed process 
 on the communicator and put them in a groupe, and in the same time create a groupe that contains the original communicator in ordre to determine the failed ranks 
 using  MPI_Group_translate_ranks, resulting an array of failed ranks.
 
@@ -146,5 +143,203 @@ mpirun -am ft-enable-mpi -np 4 ex0.3.report_one
 mpirun -am ft-enable-mpi -np 8 ex0.4.report_many
 #+end_example
 
-*** TODO Revoke and shrink infected communicator
+** DONE Revoke, shrink and reconstruct the communicator
 
+In ordre to understand how ULFM proceed in fixing a communicator that contains failures, i used [[https://bitbucket.org/icldistcomp/ulfm-testing/src/32117643cd4c082a6906f97e377bd98552fe3d76/tutorial/ex4.1.respawn.c?at=default][this global example]] that illustrate a communicator with a failure 
+that has been shrinked and then spawned with a new process in the same old rank.
+
+to do so, a process is killed just before broadcasting, a repair function MPIX_Comm_replace is set manually to handle this type of failures, once in this function, the communicator is shrinked to remove all the dead processes,
+then determines the numbre of the failure processes to be spawned , once spawned, a manipulation of ranks is used to restore the old same ranks, the rank 0 in the shrinked communicator
+send the rank's assignement for the new processes.
+
+once finish the repair function, another broadcast is done but now to all the survival ranks and the spawned ones
+
+
+* Preliminary personal tests
+** First personal example using ULFM
+
+After seeing all the examples in the tutorial provided by the ULFM team, and analysing them, they have a common point is that the part for fixing failures is set always as a function
+(protocol to follow), each time there is a failure processus the program calls MPIX_Comm_replace, once in this function, the communicator is shrinked, revoked and then the numbre of 
+the failure processes is spawned and added to the shrinked communicator.
+
+each time a process enters that function, if its a survival it will take the same ranks as before and then continue its works, if its new, it will get its assignement rank from the 
+rank 0 and it will join its work.
+
+[[https://github.com/samirouche/ft_uflm/blob/master/example2.c][my example]], is a simple broadcast after killing a process, and then calling the function that repairs, once it shrinks, revokes and spawns the failure processes, it does onother broadcast
+, results are [[https://github.com/samirouche/ft_uflm/blob/master/resultats_exemple.txt][here]], its goal is to apply ULFM and reconstruct a communicator that contains the same rank assignement as the original one,
+
+
+ #+begin_example
+mpirun -am ft-enable-mpi -np 4 example2
+#+end_example  
+
+
+** Summation with resilience example 
+
+[[https://bitbucket.org/icldistcomp/ulfm-testing/src/32117643cd4c082a6906f97e377bd98552fe3d76/tutorial/ex4.1.respawn.c?at=default][The respawn example]] presents a perfect reference for the MPI applications that needs to shrink and spawn and reconstruct a new communicator, for that i used parts of it to update
+[[https://computing.llnl.gov/tutorials/mpi/samples/C/mpi_array.c][a simple summation example]] precisely the repair's function and the necessary modifications to do to be able to work ULFM on.
+
+The main senario is to do a simple summation using MPI, then we kill random process, after once the master rank send the job's chunks to the other ranks and it detects an error of type 
+"MPI_ERR_PROC_FAILED" or "MPI_ERR_PENDING" it calls the repair function which supposed to shrink the communicator that contain the failure processes, spawn and merge them with the shrinked communicator
+in a way that each process take its old rank, i managed to implement this in [[https://github.com/samirouche/ft_uflm/blob/master/sumulfm_fail.c][this failed version]], its failed because it works just with 2 processes, once i want to test it with more then
+2 processes it blocks and don't finish the work, because with 2 processes once the master one kills the other one it can repair it because there is no other processes that are working,
+but with more than 2 processes when it entre to the repair part the other remainin processes block while working.
+
+In order to avoid this problem and instead of checking each send from the master, i put MPI_Barrier and put a check on it, if there is an error of the previous mentioned types, it will call
+the repair's function, once its repaired it will goes to the recovery part after we are assured that no process is dead, it re-sends again the job's chunks to all the ranks and finish
+the job successufly , [[https://github.com/samirouche/ft_uflm/blob/master/sumulfm.c][this version]] works for any number of processes and illustrats the senario mentionned in the begening.
+
+ #+begin_example
+mpirun -am ft-enable-mpi -np 4 sumulfm
+#+end_example  
+
+*** Example   
+
+[[https://github.com/samirouche/ft_uflm/blob/master/resultat_summation.txt][This example]] illustrates the summation of an array using MPI and ULFM with 8 processes.
+
+* More comprehensive examples
+
+
+** Building blocks
+
+In general, to construct a resilient mpi application, we need a set of blocks, each one will contribute for the composition of the final resilient mpi application
+it can be seen as the composition of 4 blocks, one that contains the main goal of the application, the other is seen as a reference for the use of ULFM to built 
+a resilient application, and the rest two blocks are designed for recovery static and dynamic data.
+
+*** MPI numerical algorithms
+
+It presents the main problem to solve, the simple working mpi source code without fault tolerance, it can be any kind of MPI application.
+
+For me i took three examples which are numerical algorithms on MPI, that i'll need for my internship.
+
+**** Summation
+
+[[https://computing.llnl.gov/tutorials/mpi/samples/C/mpi_array.c][The summation example]] treated in the previous part    
+
+**** Jacobi
+
+In order to practise the resilience of parallelism in iterativ methods, i've decided to start applicating it in the Jacobi method, for that i use [[http://www.mcs.anl.gov/research/projects/mpi/tutorial/mpiexmpl/src/jacobi/C/main.html][This code]] 
+which consists in solving the Laplace equation in two dimensions with finite differences, in a mesh of 12 x 12 on a 4 processes only!
+
+**** CG
+     
+*** MPIX reference rebuild steps
+
+There is many ways to applicate the ULFM method, for our case, we need to shrink - respawn - and reconstruct the communicator, [[https://bitbucket.org/icldistcomp/ulfm-testing/src/32117643cd4c082a6906f97e377bd98552fe3d76/tutorial/ex4.1.respawn.c?at=default&fileviewer=file-view-default][the previous respawn example]] provides this features
+so we'll consider it as our reference for building a resilient applications. the main steps to take for that are :
+
+**** Shrink 
+Create a new communicator that contains only the survival processes 
+**** Get knowledge
+Know the processes that failed and their count which will be used for respawning just after and for rank assignement 
+**** respawn
+Create the processes that failed depending on their number 
+**** reconstruct
+Merge the new safe communicator with the respawned processes in a way that each one takes its previous rank in the old communicator
+
+*** Recovery schemes for static data
+
+The static data are the data that is supplied in the entry of the program by the user , for solving linear system it represents the matrix A and the vector B.
+Its recovery is just re-initializing again the input data in the begening.    
+    
+*** Numerical recovery schemes for dynamic data
+
+There are several ways to recover the dynamic data which represents the data that we obtain after computing, some of this ways are 
+
+**** Reset
+
+One of the basic methodes of recovery schemes, it consists in doing all the work again from the begening      
+
+**** Enforced Restart (EF)
+
+It basically consists of saving the current results's state, so that it can restart from that point in case of failure and not from the begening. This is particularly important for long running 
+applications who are higly in risk of failures.
+     
+**** Linear Interpolation (LI)
+
+We consider the Linear Interpolation (LI) scheme from [[this study][https://hal.inria.fr/hal-01323192]]
+     
+** Resilient algorithms by composing building blocks
+
+For all the next numerical algorithms we use as a reference for MPIX [[https://bitbucket.org/icldistcomp/ulfm-testing/src/32117643cd4c082a6906f97e377bd98552fe3d76/tutorial/ex4.1.respawn.c?at=default&fileviewer=file-view-default][The respawn example]].
+   
+*** Resilient summation
+
+for the summation of an array, we used just a Reset method,  for [[https://computing.llnl.gov/tutorials/mpi/samples/C/mpi_array.c][our previous example]], we combined it with our [[https://bitbucket.org/icldistcomp/ulfm-testing/src/32117643cd4c082a6906f97e377bd98552fe3d76/tutorial/ex4.1.respawn.c?at=default&fileviewer=file-view-default][MPIX reference code]] with some modifications, we obtained [[https://github.com/samirouche/ft_uflm/blob/master/sumulfm.c][this resilient version]]
+when executing with 8 processes, [[https://github.com/samirouche/ft_uflm/blob/master/resultat_summation.txt][it gives this results]].
+
+ #+begin_example
+mpirun -am ft-enable-mpi -np 4 sumulfm
+#+end_example  
+
+
+*** Resilient Jacobi
+
+we took [[http://www.mcs.anl.gov/research/projects/mpi/tutorial/mpiexmpl/src/jacobi/C/main.html][the previous example of jacobi]], and edited it so it become resilient for processes failures, but the numerical recovery scheme for the dynamic data stays the user choice, for our case
+we did the 3 previous mentionned ways :
+
+**** DONE Reset   
+
+The reset method of the jacobi's iterations is presented in [[https://github.com/samirouche/ft_uflm/blob/master/reset_jacobi.c][This Code]], it doesn't necessite a numerical recovery for dynamic data but only static data as presented in the mentionned example
+
+the execution of this code with 4 processes gave us [[https://github.com/samirouche/ft_uflm/blob/master/Jacobi_reset_resultats.txt][theses results]].
+
+ #+begin_example
+mpirun -am ft-enable-mpi -np 4 reset_jacobi
+#+end_example  
+
+
+**** DONE Enforced Restart 
+
+The Checkpoint/Restart methode of the jacobi's iterations illustrated [[https://github.com/samirouche/ft_uflm/blob/master/jacobi_check_restart.c][on this code]], it doesn't necessite a numerical recovery of static data because it works only with the dynamic data after
+the first iteration, the results of execution with 4 processes can be found [[https://github.com/samirouche/ft_uflm/blob/master/Jacobi_ER_resultats.txt][here]].
+
+ #+begin_example
+mpirun -am ft-enable-mpi -np 4 jacobi_check_restart
+#+end_example  
+
+**** DONE LI
+
+for the example of jacobi, the linear interpolation consists in getting the ghostpoints of the neighber processes which contain the values of the adjacent points
+once we do it, we recover the static data for the failed processes and we iterate locally the local mesh until we get a stopping condition.
+
+after the interpolation, we continue the work in parallel by iterating until it converges or until it get to a stopping condition.
+
+[[https://github.com/samirouche/ft_uflm/blob/master/LI_jacobi.c][This Code]] illustrates the linear interpolation for the jacobi example, [[https://github.com/samirouche/ft_uflm/blob/master/Jacobi_LI_resultats.txt][These results]] were obtained in the execution of the code with 
+
+#+begin_example
+mpirun -am ft-enable-mpi -np 4 LI_jacobi 
+#+end_example
+
+
+    
+*** Resilient CG
+    
+**** CG/LI
+
+- MPI numerical algorihm: ...
+- Numerical recovery scheme for dynamic data: LI
+
+* Numerical experiences & results
+
+For the previous examples, killing a process was made by simulating its death from inside the application with "exit(0)", the main propose for Resilient MPI
+support is to manage to rebuilt the communicator and continue working after a real externe failure or node crash, to do so a random faults appear within the execution
+of the different typs of recovery, just to compare the efficacity of the methods after reconstructing the communicator, the condition of convergency is set to 10.e-14 and we compare 
+number of iterations which is necessary for that.
+
+this graph shows the different behavor of the recovery methods (LI, Reset, ER) compared with the Nan-fault methode (NF) when killing 4 processes
+
+#+ATTR_HTML:width 75% :height 75% 
+[[https://github.com/samirouche/ft_uflm/blob/master/graph.jpg]]
+
+**** Questions about ULFM
+
+Some errors who appear in this situations: 
+
+- Killing the same processes for the second time, despite that the other processes has knowledge for the victim rank each time ( broadcasting it each time )
+- Killing a process before the All_Reduce step.
+- Killing the process 0 blocks the execution
+- measure the time with MPI_Wtime() after killing a process 
+
+and i'm wonder if there is a way to know the dead processes from the recovery precedure and not from testings of communications after each Isend/Irecv?
+ 
