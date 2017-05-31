@@ -166,7 +166,7 @@ git clone https://github.com/samirouche/ft_uflm.git
 *** compile the src codes
 
  #+begin_example
-cd Resilient_version/
+cd ft_uflm/Resilient_version/
  . dockervars.sh load
 make
 #+end_example  
@@ -186,7 +186,7 @@ rank 0 and it will join its work.
 
 
  #+begin_example
-mpirun -am ft-enable-mpi -np 4 ulfm_ranks.c
+mpirun -am ft-enable-mpi -np 4 ulfm_ranks
 #+end_example  
 
 
