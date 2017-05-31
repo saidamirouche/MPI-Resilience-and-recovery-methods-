@@ -1,0 +1,30 @@
+
+ Processus 4 a commité un suicide  
+mon ancien rank est 0   Task 0 mysum  = 2.000046e+12   *** La somme finale = 1.280000e+14 ***
+mon rank dans shrink 0   mon nouveau rank est 0mon ancien rank est 1   Task 1 mysum  = 5.981570e+12   mon rank dans shrink 1   mon nouveau rank est 1   
+
+mon ancien rank est 5   Task 5 mysum  = 2.233850e+13   mon rank dans shrink 4   mon nouveau rank est 5   
+
+mon ancien rank est 6   Task 6 mysum  = 2.609248e+13   mon rank dans shrink 5   mon nouveau rank est 6   
+
+mon ancien rank est 3   Task 3 mysum  = 1.392464e+13   mon rank dans shrink 3   mon nouveau rank est 3   
+
+mon ancien rank est 7   Task 7 mysum  = 2.971472e+13   mon rank dans shrink 6   mon nouveau rank est 7   
+
+mon nouveau rank est 4   
+
+mon ancien rank est 2   Task 2 mysum  = 1.011883e+13   mon rank dans shrink 2   mon nouveau rank est 2   
+
+   
+
+
+ broadcasting de nouveau ! 
+Envoie de 2000000 elements a le rank 1 
+Envoie de 2000000 elements a le rank 2 
+Envoie de 2000000 elements a le rank 3 
+Envoie de 2000000 elements a le rank 4 
+Envoie de 2000000 elements a le rank 5 
+Envoie de 2000000 elements a le rank 6 
+Envoie de 2000000 elements a le rank 7 
+Task 0 mysum  = 2.000046e+12   *** La somme finale apres  shrink = 1.280000e+14 ***
+Task 4 mysum  = 1.796693e+13   Task 7 mysum  = 2.971472e+13   Task 3 mysum  = 1.392464e+13   Task 5 mysum  = 2.233850e+13   Task 2 mysum  = 1.011883e+13   Task 1 mysum  = 5.981570e+12   Task 6 mysum  = 2.609248e+13   

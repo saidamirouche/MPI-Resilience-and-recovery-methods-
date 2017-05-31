@@ -1,0 +1,11 @@
+Processus ancien 5  
+ Processus 5 a commité un suicide  
+Processus ancien 4  Processus shrinké 4      Processus nouveau  5  
+Processus ancien 7  Processus shrinké 6      Processus nouveau  7  
+Processus ancien 0  Processus shrinké 0      Processus nouveau  0  
+Processus ancien 2  Processus shrinké 2      Processus nouveau  3Processus ancien 1  Processus shrinké 1      Processus nouveau  2  
+Processus ancien 3  Processus shrinké 3      Processus nouveau  4  
+Processus ancien 6  Processus shrinké 5      Processus nouveau  6  
+   Processus nouveau  1  
+  
+        
