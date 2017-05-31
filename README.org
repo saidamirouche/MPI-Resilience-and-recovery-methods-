@@ -341,28 +341,61 @@ mpirun -am ft-enable-mpi -np 4 LI_jacobi
 For the previous examples, killing a process was made by simulating its death from inside the application with "exit(0)", the main propose for Resilient MPI
 support is to manage to rebuilt the communicator and continue working after a real externe failure or node crash, to do so a random faults appear within the execution
 of the different typs of recovery, just to compare the efficacity of the methods after reconstructing the communicator, the condition of convergency is set to 10.e-14 and we compare 
-number of iterations which is necessary for that.
+number of iterations which is necessary for that , and save the outputs of each method in txt file .
 
-this plot was done by [[https://doc.ubuntu-fr.org/octave][OCTAVE]], and it shows the different behavor of the recovery methods (LI, Reset, ER) compared with the Nan-fault methode (NF) when killing 4 processes
+#+begin_example
+mpirun -am ft-enable-mpi -np 6 LI_jacobi >> li.txt 
+mpirun -am ft-enable-mpi -np 6 reset_jacobi >> reset.txt 
+mpirun -am ft-enable-mpi -np 6 jacobi_check_restart >> er.txt
+mpirun -am ft-enable-mpi -np 6 jacobi_non_fault >> nf.txt
+#+end_example
+
+this plot was done by [[https://doc.ubuntu-fr.org/octave][OCTAVE]], using a [[https://github.com/samirouche/ft_uflm/blob/master/graphe.m][script]] to plot from different outputs of the source codes and it shows the different behavor of the recovery methods (LI, Reset, ER) compared with the Nan-fault methode (NF) when killing 4 processes
+
 
 #+ATTR_HTML:width 75% :height 75% 
 [[https://github.com/samirouche/ft_uflm/blob/master/Results_resilience/graph.jpg]]
 
 **** Questions about ULFM
 
-these errors
+the 4 code sources here represent some fail cases,  i puted a comment in a CAPITAL letters to regonize what makes it wrong , here's each situation with the number of the line in the source code 
+where the modifications are set : 
+
+
+- Killing the same processes for the second time :
+
+  + despite that the other processes has knowledge for the victim rank each time ( broadcasting it each time ), in line 433 of [[https://github.com/samirouche/ft_uflm/blob/master/ft_src/contre_examples/double_kill.c][this code]] i've tried to kill many times the same process but i get this error
 
 #+begin_example
 [b83ce537a2eb:00001] [[730,0],0] ORTE_ERROR_LOG: A message is attempting to be sent to a process whose contact information is unknown in file base/odls_base_default_fns.c at line 2069
 [b83ce537a2eb:00001] [[730,0],0] ORTE_ERROR_LOG: A message is attempting to be sent to a process whose contact information is unknown in file orted/orted_comm.c at line 1174
 #+end_example
 
- appear in this different situations: 
+    
+- Killing a process before the All_Reduce step : 
 
-- Killing the same processes for the second time, despite that the other processes has knowledge for the victim rank each time ( broadcasting it each time )
-- Killing a process before the All_Reduce step.
+  + i added a suicide senario in [[https://github.com/samirouche/ft_uflm/blob/master/ft_src/contre_examples/before_allreduce.c][this code]] before ALL_Reduce in the line 403 and 426 , when i run i got this error 
+
+#+begin_example
+[b83ce537a2eb:00001] [[730,0],0] ORTE_ERROR_LOG: A message is attempting to be sent to a process whose contact information is unknown in file base/odls_base_default_fns.c at line 2069
+[b83ce537a2eb:00001] [[730,0],0] ORTE_ERROR_LOG: A message is attempting to be sent to a process whose contact information is unknown in file orted/orted_comm.c at line 1174
+#+end_example
+
+
 - Killing the process 0 blocks the execution
-- measure the time with MPI_Wtime() after killing a process 
+
+  + each time i kill the process 0 it blocks the execution, the illustration in [[https://github.com/samirouche/ft_uflm/blob/master/ft_src/contre_examples/master_proc.c][this code]] in the line 433 , and results it stays blocked in the execution.
+
+- measure the time with MPI_Wtime() after killing a process
+
+  + in order to calculate the necessary time for the convergency , i summed each time the time elapsed after each iteration, but once the first suicide happens it shows me errors
+as [[https://github.com/samirouche/ft_uflm/blob/master/ft_src/contre_examples/time_ulfm.c][showen in this code]] in the lines 314 and 467. and the errors in execution 
+
+#+begin_example
+[b83ce537a2eb:00001] [[730,0],0] ORTE_ERROR_LOG: A message is attempting to be sent to a process whose contact information is unknown in file base/odls_base_default_fns.c at line 2069
+[b83ce537a2eb:00001] [[730,0],0] ORTE_ERROR_LOG: A message is attempting to be sent to a process whose contact information is unknown in file orted/orted_comm.c at line 1174
+#+end_example
+
 
 and i'm wonder if there is a way to know the dead processes from the recovery precedure and not from testings of communications after each Isend/Irecv?
  
