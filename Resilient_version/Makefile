@@ -14,7 +14,7 @@ FFLAGS += -g
 #		   -L$(HOME)/lib/BLACS/LIB
 LDFLAGS =
 
-SOURCES= LI_jacobi.c  sumulfm.c jacobi_check_restart.c reset_jacobi.c ulfm_ranks.c
+SOURCES= LI_jacobi.c  sumulfm.c jacobi_check_restart.c reset_jacobi.c ulfm_ranks.c jacobi_non_faut.c
 APPS=$(SOURCES:.c=)
 
 all: $(APPS)
