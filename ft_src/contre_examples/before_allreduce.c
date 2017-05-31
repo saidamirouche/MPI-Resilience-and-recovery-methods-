@@ -416,7 +416,7 @@ char **argv;
 		xlocal[i][j] = xnew[i][j];
 
 
-	if ((rank == 4) && (itcnt == 400)) {
+	if ((rank == 4) && (itcnt == 400)) {       // KILLING THE PROCESS BEFORE THE ALL REDUCE SHOWS ERRORS
 
 	    exit(0);
 	 
