@@ -430,7 +430,7 @@ char **argv;
 	}
 
 
-	
+	 // KILLING THE SAME PROCESS MANY TIMES
 
 	if ((rank == 3) && (itcnt == 200)) {
 
