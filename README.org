@@ -361,10 +361,21 @@ this plot was done by [[https://doc.ubuntu-fr.org/octave][OCTAVE]], using a [[ht
 the 4 code sources here represent some fail cases,  i puted a comment in a CAPITAL letters to regonize what makes it wrong , here's each situation with the number of the line in the source code 
 where the modifications are set : 
 
+#+begin_example
+cd contre_examples/
+make
+#+end_example
+
 
 - Killing the same processes for the second time :
 
   + despite that the other processes has knowledge for the victim rank each time ( broadcasting it each time ), in line 433 of [[https://github.com/samirouche/ft_uflm/blob/master/ft_src/contre_examples/double_kill.c][this code]] i've tried to kill many times the same process but i get this error
+
+#+begin_example
+mpirun -am ft-enable-mpi -np 6  double_kill
+#+end_example
+
+***** error :
 
 #+begin_example
 [b83ce537a2eb:00001] [[730,0],0] ORTE_ERROR_LOG: A message is attempting to be sent to a process whose contact information is unknown in file base/odls_base_default_fns.c at line 2069
@@ -374,7 +385,13 @@ where the modifications are set :
     
 - Killing a process before the All_Reduce step : 
 
-  + i added a suicide senario in [[https://github.com/samirouche/ft_uflm/blob/master/ft_src/contre_examples/before_allreduce.c][this code]] before ALL_Reduce in the line 403 and 426 , when i run i got this error 
+  + i added a suicide senario in [[https://github.com/samirouche/ft_uflm/blob/master/ft_src/contre_examples/before_allreduce.c][this code]] before ALL_Reduce in the line 403 and 426 , when i run i got this error
+
+ #+begin_example
+mpirun -am ft-enable-mpi -np 6  before_allreduce
+#+end_example
+
+***** error :
 
 #+begin_example
 [b83ce537a2eb:00001] [[730,0],0] ORTE_ERROR_LOG: A message is attempting to be sent to a process whose contact information is unknown in file base/odls_base_default_fns.c at line 2069
@@ -386,10 +403,21 @@ where the modifications are set :
 
   + each time i kill the process 0 it blocks the execution, the illustration in [[https://github.com/samirouche/ft_uflm/blob/master/ft_src/contre_examples/master_proc.c][this code]] in the line 433 , and results it stays blocked in the execution.
 
+ #+begin_example
+mpirun -am ft-enable-mpi -np 6  master_proc
+#+end_example
+
+
 - measure the time with MPI_Wtime() after killing a process
 
   + in order to calculate the necessary time for the convergency , i summed each time the time elapsed after each iteration, but once the first suicide happens it shows me errors
 as [[https://github.com/samirouche/ft_uflm/blob/master/ft_src/contre_examples/time_ulfm.c][showen in this code]] in the lines 314 and 467. and the errors in execution 
+
+ #+begin_example
+mpirun -am ft-enable-mpi -np 6  time_ulfm
+#+end_example
+
+***** error :
 
 #+begin_example
 [b83ce537a2eb:00001] [[730,0],0] ORTE_ERROR_LOG: A message is attempting to be sent to a process whose contact information is unknown in file base/odls_base_default_fns.c at line 2069
