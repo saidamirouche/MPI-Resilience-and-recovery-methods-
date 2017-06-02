@@ -209,7 +209,7 @@ char **argv;
       //begin = clock();
 
 
-      if((rank == victim) && (rank != 0) && (itcnt == 250)) {
+      if((rank == victim) && (rank != 0) && (itcnt == 100)) {
       
 		exit(0);
       }
@@ -234,21 +234,14 @@ char **argv;
 	me = rank;
 	dead = status.MPI_SOURCE;
 
+	
 	for(i=0;i<size;i++) {
-	  if(i !=rank) {
+	  if ((i !=rank) || (i!=dead)) {
 	    MPI_Isend( &dead, 1, MPI_INT, i, 0,   world,&request);
 	  }
-	}
-      }  
+	  } 
 
-
-      if( (MPI_ERR_PROC_FAILED == rc) || (MPI_ERR_PENDING == rc) ) {
-
-	rc = MPI_Irecv(&dead, 1, MPI_INT, me, 1,world,&request);
-	
-	MPI_Isend( &dead, 1, MPI_INT, MPI_ANY_SOURCE, 0,   world,&request);
-
-	
+       	
       }
       
 	/* Compute new values (but not on boundary) */
@@ -278,13 +271,7 @@ char **argv;
         
 	  goto reprise;
 	}
-	//   t2 = MPI_Wtime();
 
-	
-	//end = clock();
-	//time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-	//t = t + time_spent;
-	
 	gdiffnorm = sqrt( gdiffnorm );
 	if (rank == 0) printf("%e %d\n",gdiffnorm, itcnt);
 
@@ -295,59 +282,46 @@ char **argv;
  reprise:
    
     MPI_Bcast(&dead, 1, MPI_INT, 0, world);
-    victim = dead;
     
     i_first = 1;
     i_last  = maxn/size;
     if (rank == 0)        i_first++;
     if (rank == size - 1) i_last--;
 
-    if (rank==victim)
+    if (rank==dead)
       static_data(i_first, i_last,  rank, size,xlocal);
     
 
     do {
-	/* Send up unless I'm at the top, then receive from below */
-	/* Note the use of xlocal[i] for &xlocal[i][0] */
+      /* Send up unless I'm at the top, then receive from below */
+      /* Note the use of xlocal[i] for &xlocal[i][0] */
     
       
-	if (rank < size - 1) 
-	    MPI_Send( xlocal[maxn/size], maxn, MPI_DOUBLE, rank + 1, 0, 
-		      world );
-	if (rank > 0)
-	    rc = MPI_Recv( xlocal[0], maxn, MPI_DOUBLE, rank - 1, 0, 
-		      world, &status );
-	if( (MPI_ERR_PROC_FAILED == rc) || (MPI_ERR_PENDING == rc) ) {
-	  me = rank;
-	  dead = status.MPI_SOURCE;
-	  
-	}
-	/* Send down unless I'm at the bottom */
-	if (rank > 0) 
-	    MPI_Send( xlocal[1], maxn, MPI_DOUBLE, rank - 1, 1, 
-		      world );
-	if (rank < size - 1) 
-	    rc = MPI_Recv( xlocal[maxn/size+1], maxn, MPI_DOUBLE, rank + 1, 1, 
-		      world, &status );
+      if (rank < size - 1) 
+	MPI_Send( xlocal[maxn/size], maxn, MPI_DOUBLE, rank + 1, 0, 
+		  world );
+      if (rank > 0)
+	rc = MPI_Recv( xlocal[0], maxn, MPI_DOUBLE, rank - 1, 0, 
+		       world, &status );
 
-	 if( (MPI_ERR_PROC_FAILED == rc) || (MPI_ERR_PENDING == rc) ) {
+      /* Send down unless I'm at the bottom */
+      if (rank > 0) 
+	MPI_Send( xlocal[1], maxn, MPI_DOUBLE, rank - 1, 1, 
+		  world );
+      if (rank < size - 1) 
+	rc = MPI_Recv( xlocal[maxn/size+1], maxn, MPI_DOUBLE, rank + 1, 1, 
+		       world, &status );
+
+      if( (MPI_ERR_PROC_FAILED == rc) || (MPI_ERR_PENDING == rc) ) {
 	me = rank;
 	dead = status.MPI_SOURCE;
 
 	
 	for(i=0;i<size;i++) {
-	  if(i !=rank) {
+	  if ((i !=rank) || (i!=dead)) {
 	    MPI_Isend( &dead, 1, MPI_INT, i, 0,   world,&request);
 	  }
-	}
-      }  
-
-  
-      if( (MPI_ERR_PROC_FAILED == rc) || (MPI_ERR_PENDING == rc) ) {
-
-	rc = MPI_Irecv(&dead, 1, MPI_INT, me, 1,world,&request);
-	
-	MPI_Isend( &dead, 1, MPI_INT, MPI_ANY_SOURCE, 0,   world,&request);
+	} 
 
       }
       
@@ -383,36 +357,30 @@ char **argv;
 	
 
 
-       	if ((rank == 5) && (itcnt == 200)) {
+	
+	if ((rank == 2) && (itcnt == 200)) {
 
-	  exit(0);
+	   exit(0);
 	 
 	}
 	
 	if ((rank == 4) && (itcnt == 400)) {
 
-	  exit(0);
+	    exit(0);
 	 
 	}
 
 
-	if ((rank == 2) && (itcnt == 600)) {
 
-	  // exit(0);
-	 
-	}
 
 	if ((rank == 3) && (itcnt == 800)) {
 
-	  exit(0);
-	
+	   exit(0);
+	 
 	}
 
-	if ((rank == 4) && (itcnt == 650)) {
 
-	  // exit(0);
 	
-	}
 	
 	gdiffnorm = sqrt( gdiffnorm );
 

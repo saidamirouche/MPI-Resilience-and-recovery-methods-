@@ -247,7 +247,7 @@ char **argv;
  
       if((rank == victim) && (rank!=0) && (itcnt == 100)) {
        
-       	exit(-1);
+		exit(-1);
       }
 
     
@@ -264,32 +264,23 @@ char **argv;
 	dead = status.MPI_SOURCE;
 
 	for(i=0;i<size;i++) {
-	  if(i !=rank) {
+	  if ((i !=rank) || (i!=dead)) {
 	    MPI_Isend( &dead, 1, MPI_INT, i, 0,   world,&request);
 	  }
-	}
-      }  
-
-  
-      if( (MPI_ERR_PROC_FAILED == rc) || (MPI_ERR_PENDING == rc) ) {
-
-	rc = MPI_Irecv(&dead, 1, MPI_INT, me, 1,world,&request);
-	
-	MPI_Isend( &dead, 1, MPI_INT, MPI_ANY_SOURCE, 0,   world,&request);
-
+	} 
       }
-	/* Compute new values (but not on boundary) */
-	itcnt ++;
-	diffnorm = 0.0;
-	for (i=i_first; i<=i_last; i++) 
-	  for (j=1; j<maxn-1; j++) {
-	    xnew[i][j] = (xlocal[i][j+1] + xlocal[i][j-1] +
-			  xlocal[i+1][j] + xlocal[i-1][j]) / 4.0;
-	    diffnorm += (xnew[i][j] - xlocal[i][j]) * 
-	      (xnew[i][j] - xlocal[i][j]);
-	  }
-	/* Only transfer the interior points */
-	for (i=i_first; i<=i_last; i++) 
+      /* Compute new values (but not on boundary) */
+      itcnt ++;
+      diffnorm = 0.0;
+      for (i=i_first; i<=i_last; i++) 
+	for (j=1; j<maxn-1; j++) {
+	  xnew[i][j] = (xlocal[i][j+1] + xlocal[i][j-1] +
+			xlocal[i+1][j] + xlocal[i-1][j]) / 4.0;
+	  diffnorm += (xnew[i][j] - xlocal[i][j]) * 
+	    (xnew[i][j] - xlocal[i][j]);
+	}
+      /* Only transfer the interior points */
+      for (i=i_first; i<=i_last; i++) 
 	  for (j=1; j<maxn-1; j++) 
 	    xlocal[i][j] = xnew[i][j];
        	
@@ -317,14 +308,13 @@ char **argv;
 
     } while (gdiffnorm > 1.0e-13 && itcnt < 10000 );
 
-    if (rank == 0) printf("%d\n", itcnt);
- MPI_Finalize( );
+    MPI_Finalize( );
     return 0;
       
  reprise:
     MPI_Bcast(&dead, 1, MPI_INT, 0, world);
     victim = dead;
-
+    
     // printf("the dead one is %d \n",dead);
     
     i_first = 1;
@@ -334,8 +324,8 @@ char **argv;
 
 
     if (rank==dead) {
-	    static_data(i_first, i_last, rank, size, xlocal);               // Reset les données pour le processus mort      
-     	  }
+      static_data(i_first, i_last, rank, size, xlocal);               // Reset les données pour le processus mort      
+    }
     
     if(rank== dead-1)
       MPI_Send( xlocal[maxn/size], maxn, MPI_DOUBLE, dead, 0, 
@@ -378,27 +368,20 @@ char **argv;
 	   rc = MPI_Recv( xlocal[maxn/size+1], maxn, MPI_DOUBLE, rank + 1, 1, 
 		      world, &status );
 
-	 if( (MPI_ERR_PROC_FAILED == rc) || (MPI_ERR_PENDING == rc) ) {
-	me = rank;
-	dead = status.MPI_SOURCE;
+	if( (MPI_ERR_PROC_FAILED == rc) || (MPI_ERR_PENDING == rc) ) {
+	  me = rank;
+	  dead = status.MPI_SOURCE;
 
-	//	printf("the dead one after shrinks is %d \n",dead);
+	  //	printf("the dead one after shrinks is %d \n",dead);
 
-	for(i=0;i<size;i++) {
-	  if(i !=rank) {
-	    MPI_Isend( &dead, 1, MPI_INT, i, 0,   world,&request);
-	  }
-	}
-      }  
+	  for(i=0;i<size;i++) {
+	    if ((i !=rank) || (i!=dead)) {
+	      MPI_Isend( &dead, 1, MPI_INT, i, 0,   world,&request);
+	    }
+	  } 
 
-  
-      if( (MPI_ERR_PROC_FAILED == rc) || (MPI_ERR_PENDING == rc) ) {
-
-	rc = MPI_Irecv(&dead, 1, MPI_INT, me, 1,world,&request);
 	
-	MPI_Isend( &dead, 1, MPI_INT, MPI_ANY_SOURCE, 0,   world,&request);
-
-      }
+	}
       
 	/* Compute new values (but not on boundary) */
 	itcnt ++;
@@ -445,11 +428,8 @@ char **argv;
 	}
 
 
-	if ((rank == 2) && (itcnt == 600)) {
 
-	    exit(0);
-	 
-	}
+        
 
 	if ((rank == 3) && (itcnt == 800)) {
 

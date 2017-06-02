@@ -174,60 +174,62 @@ int recovery_data(double local[(12/4)+2][12],int rank) {
  
 
 int main( argc, argv )
-     int argc;
-     char **argv;
+int argc;
+char **argv;
 {
-  int        rank, value, size, errcnt, toterr, i, j, itcnt,recov_it,me,dead;
-    int        i_first,s=1, i_last,rc;
+  int        rank, value, size, errcnt, toterr, i, j, itcnt,recov_it;
+    int        i_first, i_last,rc;
     MPI_Status status;
-    MPI_Request request;
     double     diffnorm, gdiffnorm,recov;
     double     xlocal[(12/4)+2][12];
     double     xrec[(12/4)+2][12];
     double     xnew[(12/3)+2][12];
     MPI_Comm world,rworld;
     FILE *fp;
+    MPI_Request request;
+    int k=0;
+    int dead_it;
+    int ag;
     double t,time_spent;
     clock_t begin,end;
-    
-    
-
+    double T1, T2;
+   
+	
     gargv = argv;
     MPI_Init( &argc, &argv );
 
-    MPI_Comm_get_parent( &world );
+     MPI_Comm_get_parent( &world );
+
+     // printf(" l'argument est  %s \n",argv[1]);
      
     if( MPI_COMM_NULL == world ) {
-        // on initialise notre communicateur 
-        MPI_Comm_dup( MPI_COMM_WORLD, &world );
-        MPI_Comm_size( world, &size );
-        MPI_Comm_rank( world, &rank );
-        MPI_Comm_set_errhandler( world, MPI_ERRORS_RETURN );
+      // on initialise notre communicateur 
+      MPI_Comm_dup( MPI_COMM_WORLD, &world );
+      MPI_Comm_size( world, &size );
+      MPI_Comm_rank( world, &rank );
+      MPI_Comm_set_errhandler( world, MPI_ERRORS_RETURN );
     } else {
-        // si le communicateur existe déja et le processus est spawné , il reprend le travail
-        MPIX_Comm_replace( MPI_COMM_NULL, &world );
-        MPI_Comm_size( world, &size );
-        MPI_Comm_rank( world, &rank );
-        MPI_Comm_set_errhandler( world, MPI_ERRORS_RETURN );
-        goto reprise;
+      // si le communicateur existe déja et le processus est spawné , il reprend le travail
+       MPIX_Comm_replace( MPI_COMM_NULL, &world );
+      
+      MPI_Comm_size( world, &size );
+      MPI_Comm_rank( world, &rank );
+      MPI_Comm_set_errhandler( world, MPI_ERRORS_RETURN );
+     goto reprise;
     }
 
-
-    
-    int jeton = 1;
-    int victim;   //Un processus qui se suicide
-    srand (time(NULL));
-    victim = (rand()%(size-1))+ 1;
-    victim = 1;
-   
-
-
-      i_first = 1;
+    i_first = 1;
     i_last  = maxn/size;
     if (rank == 0)        i_first++;
     if (rank == size - 1) i_last--;
 
-    /* Fill the data as specified */
+    int victim;                                                                     //Un processus qui se suicide
+    srand (time(NULL));
+    victim = (rand()%(size-1))+ 1;
+    victim = 1;
+    int sz;
+   
+    
     for (i=1; i<=maxn/size; i++) 
 	for (j=0; j<maxn; j++) 
 	    xlocal[i][j] = rank;
@@ -235,273 +237,207 @@ int main( argc, argv )
 	xlocal[i_first-1][j] = -1;
 	xlocal[i_last+1][j] = -1;
     }
+
     
-
-
+    int dead = 0;
+    int me;
     itcnt = 0;
-    t = 0;
-    time_spent = 0;
-
-
-	  
-
-	  
+  
     
     do {
-      // Send up unless I'm at the top, then receive from below 
-        // Note the use of xlocal[i] for &xlocal[i][0] 
 
-      begin = clock();
-      
+
+      T1 = MPI_Wtime();
+	/* Send up unless I'm at the top, then receive from below */
+	/* Note the use of xlocal[i] for &xlocal[i][0] */
+
+       save_dat(itcnt,xlocal,rank);
+
+      if (rank < size - 1) 
+	MPI_Send( xlocal[maxn/size], maxn, MPI_DOUBLE, rank + 1, 0, 
+		  world );
+      if (rank > 0)
+	MPI_Recv( xlocal[0], maxn, MPI_DOUBLE, rank - 1, 0, 
+		  world, &status );
+ 
+      if((rank == victim) && (rank!=0) && (itcnt == 100)) {
+       
+		exit(-1);
+      }
+
+    
+      /* Send down unless I'm at the bottom */
+      if (rank > 0) 
+	MPI_Send( xlocal[1], maxn, MPI_DOUBLE, rank - 1, 1, 
+		  world );
+      if (rank < size - 1)  
+	rc = MPI_Recv( xlocal[maxn/size+1], maxn, MPI_DOUBLE, rank + 1, 1, 
+		       world, &status );
      
-      
-      save_dat(itcnt,xlocal,rank);                                   
+      if( (MPI_ERR_PROC_FAILED == rc) || (MPI_ERR_PENDING == rc) ) {
+	me = rank;
+	dead = status.MPI_SOURCE;
 
-      if((rank == victim) && (itcnt == 250) ) {
-      
-		 exit(-1);
-        }
-      
-        if (rank < size - 1) 
-            MPI_Send( xlocal[maxn/size], maxn, MPI_DOUBLE, rank + 1, 0, 
-                      world );
-        if (rank > 0)
-            MPI_Recv( xlocal[0], maxn, MPI_DOUBLE, rank - 1, 0, 
-                      world, &status );
-        // Send down unless I'm at the bottom 
-        if (rank > 0) 
-	  MPI_Send( xlocal[1], maxn, MPI_DOUBLE, rank - 1, 1, 
-		    world );
-        if (rank < size - 1) 
-	  rc = MPI_Recv( xlocal[maxn/size+1], maxn, MPI_DOUBLE, rank + 1, 1, 
-		    world, &status );
-
-	if( (MPI_ERR_PROC_FAILED == rc) || (MPI_ERR_PENDING == rc) ) {
-	  me = rank;
-	  dead = status.MPI_SOURCE;
-
-	  for(i=0;i<size;i++) {
-	    if(i !=rank) {
-	      MPI_Isend( &dead, 1, MPI_INT, i, 0,   world,&request);
-	    }
+	for(i=0;i<size;i++) {
+	  if ((i !=rank) || (i!=dead)) {
+	    MPI_Isend( &dead, 1, MPI_INT, i, 0,   world,&request);
 	  }
-	}  
-
-
-	if( (MPI_ERR_PROC_FAILED == rc) || (MPI_ERR_PENDING == rc) ) {
-
-	  rc = MPI_Irecv(&dead, 1, MPI_INT, me, 1,world,&request);
-	
-	  MPI_Isend( &dead, 1, MPI_INT, MPI_ANY_SOURCE, 0,   world,&request);
-
-	
+	} 
+      }
+      /* Compute new values (but not on boundary) */
+      itcnt ++;
+      diffnorm = 0.0;
+      for (i=i_first; i<=i_last; i++) 
+	for (j=1; j<maxn-1; j++) {
+	  xnew[i][j] = (xlocal[i][j+1] + xlocal[i][j-1] +
+			xlocal[i+1][j] + xlocal[i-1][j]) / 4.0;
+	  diffnorm += (xnew[i][j] - xlocal[i][j]) * 
+	    (xnew[i][j] - xlocal[i][j]);
 	}
-      
-        itcnt ++;
-        diffnorm = 0.0;
-        for (i=i_first; i<=i_last; i++) 
-	  for (j=1; j<maxn-1; j++) {
-	    xnew[i][j] = (xlocal[i][j+1] + xlocal[i][j-1] +
-                              xlocal[i+1][j] + xlocal[i-1][j]) / 4.0;
-                diffnorm += (xnew[i][j] - xlocal[i][j]) * 
-                    (xnew[i][j] - xlocal[i][j]);
-            }
-        // Only transfer the interior points 
-        for (i=i_first; i<=i_last; i++) 
-            for (j=1; j<maxn-1; j++) 
-                xlocal[i][j] = xnew[i][j];
+      /* Only transfer the interior points */
+      for (i=i_first; i<=i_last; i++) 
+	  for (j=1; j<maxn-1; j++) 
+	    xlocal[i][j] = xnew[i][j];
+       	
 	
-        rc = MPI_Allreduce( &diffnorm, &gdiffnorm, 1, MPI_DOUBLE, MPI_SUM,
-                            world );
-
-	
-        if( (MPI_ERR_PROC_FAILED == rc) || (MPI_ERR_PENDING == rc) ) {
+	rc = MPI_Allreduce( &diffnorm, &gdiffnorm, 1, MPI_DOUBLE, MPI_SUM,
+			    world );
+	if( (MPI_ERR_PROC_FAILED == rc) || (MPI_ERR_PENDING == rc) ) {
 	  MPI_Irecv( &dead, 1, MPI_INT,MPI_ANY_SOURCE, 0,   world,&request);
-            MPIX_Comm_replace( world, &rworld );                      // appeller la fonction de réparation et remplacer le communicateur érroné avec le nouveau 
-            MPI_Comm_free( &world );                                  // et commencer la partie de recovery 
-            world = rworld;
-            goto reprise;
-        }
+	  MPIX_Comm_replace( world, &rworld );                      // appeller la fonction de réparation et remplacer le communicateur érroné avec le nouveau 
+	  MPI_Comm_free( &world );                                  // et commencer la partie de recovery 
+	  world = rworld;
+        
+	  goto reprise;
+	}
 
-	end = clock();
-	time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-	t = t + time_spent;
+
 	 
-        gdiffnorm = sqrt( gdiffnorm );
-	if (rank == 0) printf("%e %d %lf\n",gdiffnorm, itcnt,t);
+	gdiffnorm = sqrt( gdiffnorm );
 
-    } while ( gdiffnorm > 1.0e-13 && itcnt < 10000 ); //itcnt < 1000000);
+	
+	if (rank == 0)	printf("%e %d \n",gdiffnorm, itcnt); 
+
+	
+
+    } while (gdiffnorm > 1.0e-13 && itcnt < 10000 );
 
     MPI_Finalize( );
     return 0;
-
-       
+      
  reprise:
-
-    /**
-     * All processes need to have a consistent view of the victim, including the newly
-     * spawned replacement processes. */
-     
+  
     MPI_Bcast(&dead, 1, MPI_INT, 0, world);
     victim = dead;
-
-     itcnt = recovery_data(xlocal,rank);     // Recupéré les données dynamic < le vecteur résidu et nombre des itérations d'un fichier txt>
-
-
-
-     
-    if(rank == dead)
-     itcnt = recovery_data(xlocal,rank);                        // Recupéré les données dynamic < le vecteur résidu et nombre des itérations d'un fichier txt>
-
-    MPI_Bcast(&itcnt, 1, MPI_INT, 0, world);
-
     
-    
-	   
-    MPI_Bcast(&itcnt, 1, MPI_INT, 0, world);
-
-
-   
-
     i_first = 1;
     i_last  = maxn/size;
     if (rank == 0)        i_first++;
     if (rank == size - 1) i_last--;
-    
-    
-    
+
+    if (rank==dead)
+      itcnt = recovery_data(xlocal,rank);
+
+    MPI_Bcast(&itcnt, 1, MPI_INT, dead, world);
+
+    itcnt = itcnt+2;
     do {
-
-                begin = clock();
-
-		
-		save_dat(itcnt,xlocal,rank);
-
+	/* Send up unless I'm at the top, then receive from below */
+	/* Note the use of xlocal[i] for &xlocal[i][0] */
+      
 
       
-        if (rank < size - 1) 
-            MPI_Send( xlocal[maxn/size], maxn, MPI_DOUBLE, rank + 1, 0, 
-                      world );
-        if (rank > 0)
-            rc = MPI_Recv( xlocal[0], maxn, MPI_DOUBLE, rank - 1, 0, 
-                      world, &status );
-	if( (MPI_ERR_PROC_FAILED == rc) || (MPI_ERR_PENDING == rc) ) {
-	  me = rank;
-	  dead = status.MPI_SOURCE;
-	  
-	}
-
-	
-
-	
-        if (rank > 0) 
-            MPI_Send( xlocal[1], maxn, MPI_DOUBLE, rank - 1, 1, 
-                      world );
-        if (rank < size - 1) 
-            rc = MPI_Recv( xlocal[maxn/size+1], maxn, MPI_DOUBLE, rank + 1, 1, 
-                      world, &status );
+	if (rank < size - 1) 
+	    MPI_Send( xlocal[maxn/size], maxn, MPI_DOUBLE, rank + 1, 0, 
+		      world );
+	if (rank > 0)
+	    MPI_Recv( xlocal[0], maxn, MPI_DOUBLE, rank - 1, 0, 
+		      world, &status );
+	/* Send down unless I'm at the bottom */
+	if (rank > 0) 
+	    MPI_Send( xlocal[1], maxn, MPI_DOUBLE, rank - 1, 1, 
+		      world );
+	if (rank < size - 1) 
+	   rc = MPI_Recv( xlocal[maxn/size+1], maxn, MPI_DOUBLE, rank + 1, 1, 
+		      world, &status );
 
 	if( (MPI_ERR_PROC_FAILED == rc) || (MPI_ERR_PENDING == rc) ) {
 	  me = rank;
 	  dead = status.MPI_SOURCE;
+
+	  //	printf("the dead one after shrinks is %d \n",dead);
 
 	  for(i=0;i<size;i++) {
-	    if(i !=rank) {
+	    if ((i !=rank) || (i!=dead)) {
 	      MPI_Isend( &dead, 1, MPI_INT, i, 0,   world,&request);
 	    }
-	  }
-	}  
+	  } 
 
+	
+	}
+      
+	/* Compute new values (but not on boundary) */
+	itcnt ++;
+	//itcnt ++;
+
+	diffnorm = 0;
+	for (i=i_first; i<=i_last; i++) 
+	    for (j=1; j<maxn-1; j++) {
+		xnew[i][j] = (xlocal[i][j+1] + xlocal[i][j-1] +
+			      xlocal[i+1][j] + xlocal[i-1][j]) / 4.0;
+		diffnorm += (xnew[i][j] - xlocal[i][j]) * 
+		            (xnew[i][j] - xlocal[i][j]);
+	    }
+	/* Only transfer the interior points */
+	for (i=i_first; i<=i_last; i++) 
+	    for (j=1; j<maxn-1; j++) 
+		xlocal[i][j] = xnew[i][j];
+
+	rc = MPI_Allreduce( &diffnorm, &gdiffnorm, 1, MPI_DOUBLE, MPI_SUM,
+		       world );
 
 	if( (MPI_ERR_PROC_FAILED == rc) || (MPI_ERR_PENDING == rc) ) {
-
-	  rc = MPI_Irecv(&dead, 1, MPI_INT, me, 1,world,&request);
-	
-	  MPI_Isend( &dead, 1, MPI_INT, MPI_ANY_SOURCE, 0,   world,&request);
-
-	}
-
-
-	
-	
-        itcnt ++;
-        diffnorm = 0;
-        for (i=i_first; i<=i_last; i++) 
-            for (j=1; j<maxn-1; j++) {
-                xnew[i][j] = (xlocal[i][j+1] + xlocal[i][j-1] +
-                              xlocal[i+1][j] + xlocal[i-1][j]) / 4.0;
-                diffnorm += (xnew[i][j] - xlocal[i][j]) * 
-                    (xnew[i][j] - xlocal[i][j]);
-            }
-        for (i=i_first; i<=i_last; i++) 
-	  for (j=1; j<maxn-1; j++) 
-	    xlocal[i][j] = xnew[i][j];
-
-
-	
-
-
-	
-	rc = MPI_Allreduce( &diffnorm, &gdiffnorm, 1, MPI_DOUBLE, MPI_SUM,
-                            world );
-       
-        if( (MPI_ERR_PROC_FAILED == rc) || (MPI_ERR_PENDING == rc) ) {
 	  MPI_Irecv( &dead, 1, MPI_INT,MPI_ANY_SOURCE, 0,   world,&request);
-
-	  MPIX_Comm_replace( world, &rworld );                  // appeller la fonction de réparation et remplacer le communicateur érroné avec le nouveau 
+	  MPIX_Comm_replace( world, &rworld );                      // appeller la fonction de réparation et remplacer le communicateur érroné avec le nouveau 
 	  MPI_Comm_free( &world );                                  // et commencer la partie de recovery 
 	  world = rworld;
-	  s = s+1;
-	    
+	  
+	  MPI_Bcast(&dead, 1, MPI_INT, 0, world);
+
 	  goto reprise;
-        }
-	
+	}
 
 
-	if ((rank == 5) && (itcnt == 200)) {
+	save_dat(itcnt,xlocal,rank);
 
-	  exit(0);
+	if ((rank == 2) && (itcnt == 200)) {
+
+	   exit(0);
 	 
 	}
 	
-	if ((rank == 4) && (itcnt == 340)) {
+	if ((rank == 4) && (itcnt == 400)) {
 
-	  exit(0);
+	    exit(0);
 	 
 	}
 
 
-	if ((rank == 2) && (itcnt == 600)) {
 
-	  // exit(0);
+	if ((rank == 3) && (itcnt == 800)) {
+
+	   exit(0);
 	 
 	}
-
-	if ((rank == 3) && (itcnt == 280)) {
-
-	  exit(0);
 	
-	}
+	gdiffnorm = sqrt( gdiffnorm );
 
-	if ((rank == 4) && (itcnt == 650)) {
+	if (rank == 0) printf("%e %d \n",gdiffnorm, itcnt);
 
-	  // exit(0);
-	
-	}
-	
 
-        gdiffnorm = sqrt( gdiffnorm );
-
-	end = clock();
-	time_spent = (double)(end - begin) / CLOCKS_PER_SEC;
-	t = t + time_spent;
-	
-	if (rank == 0) printf("%e %d %lf\n",gdiffnorm, itcnt,t);
-
-    } while ( gdiffnorm > 1.0e-13 && itcnt < 1500);
-
+    } while (gdiffnorm > 1.0e-13 && itcnt < 10000 );
+    
     return 0;
 }
 
 
- 
