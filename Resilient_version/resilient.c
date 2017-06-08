@@ -6,7 +6,7 @@
 #include <mpi-ext.h>
 #include <stdlib.h>
 
-
+//
 int rank=MPI_PROC_NULL, verbose=0; 
 char** gargv;
 
