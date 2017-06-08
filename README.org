@@ -366,8 +366,7 @@ this plot was done by [[https://doc.ubuntu-fr.org/octave][OCTAVE]], using a [[ht
 in different iterations 
 
 
-#+ATTR_HTML:width 75% :height 75% 
-[[https://github.com/samirouche/ft_uflm/blob/master/Results_resilience/graph.jpg]]
+[[https://github.com/samirouche/ft_uflm/blob/master/Results_resilience/graph_1.jpg]]
 
 **** Questions about ULFM
 
