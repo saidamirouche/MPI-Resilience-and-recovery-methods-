@@ -411,15 +411,6 @@ mpirun -am ft-enable-mpi -np 6  before_allreduce
 #+end_example
 
 
-- Killing the process 0 blocks the execution
-
-  + each time i kill the process 0 it blocks the execution, the illustration in [[https://github.com/samirouche/ft_uflm/blob/master/ft_src/contre_examples/master_proc.c][this code]] in the line 433 , and results it stays blocked in the execution.
-
- #+begin_example
-mpirun -am ft-enable-mpi -np 6  master_proc
-#+end_example
-
-
 - measure the time with MPI_Wtime() after killing a process
 
   + in order to calculate the necessary time for the convergency , i summed each time the time elapsed after each iteration, but once the first suicide happens it shows me errors
