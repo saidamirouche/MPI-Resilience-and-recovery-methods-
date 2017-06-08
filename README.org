@@ -338,19 +338,32 @@ mpirun -am ft-enable-mpi -np 4 LI_jacobi
 
 * Numerical experiences & results
 
+the recovery strategies used are gathered as functions in the same source code [[https://github.com/samirouche/ft_uflm/blob/master/Resilient_version/resilient.c][here]], which allows to make the same tests each time but using different recovery
+strategies, by changing in the execution parameter :
+
+  + 0 : NF (without faults)
+  + 1 : RESET (Reset the work of the dieying process)
+  + 2 : ER (Enforced restart)
+  + 3 : LI (Linear interpolation)
+
+#+begin_example
+mpirun -am ft-enable-mpi -np 6 resilient 0  # for the NF methode
+#+end_example
+
 For the previous examples, killing a process was made by simulating its death from inside the application with "exit(0)", the main propose for Resilient MPI
-support is to manage to rebuilt the communicator and continue working after a real externe failure or node crash, to do so a random faults appear within the execution
-of the different typs of recovery, just to compare the efficacity of the methods after reconstructing the communicator, the condition of convergency is set to 10.e-14 and we compare 
+support is to manage to rebuilt the communicator and continue working after a real externe failure or node crash, to do so a different tests were set, by injecting
+ faults  within the execution of the different typs of recovery in different iterations, just to compare the efficacity of the methods after reconstructing the communicator, the condition of convergency is set to 10.e-14 and we compare 
 number of iterations which is necessary for that , and save the outputs of each method in txt file .
 
 #+begin_example
-mpirun -am ft-enable-mpi -np 6 LI_jacobi >> li.txt 
-mpirun -am ft-enable-mpi -np 6 reset_jacobi >> reset.txt 
-mpirun -am ft-enable-mpi -np 6 jacobi_check_restart >> er.txt
-mpirun -am ft-enable-mpi -np 6 jacobi_non_fault >> nf.txt
+mpirun -am ft-enable-mpi -np 6 resilient 3 >> li.txt 
+mpirun -am ft-enable-mpi -np 6 resilient 1 >> reset.txt 
+mpirun -am ft-enable-mpi -np 6 resilient 2 >> er.txt
+mpirun -am ft-enable-mpi -np 6 resilient 0 >> nf.txt
 #+end_example
 
-this plot was done by [[https://doc.ubuntu-fr.org/octave][OCTAVE]], using a [[https://github.com/samirouche/ft_uflm/blob/master/graphe.m][script]] to plot from different outputs of the source codes and it shows the different behavor of the recovery methods (LI, Reset, ER) compared with the Nan-fault methode (NF) when killing 4 processes
+this plot was done by [[https://doc.ubuntu-fr.org/octave][OCTAVE]], using a [[https://github.com/samirouche/ft_uflm/blob/master/graphe.m][script]] to plot from different outputs of the source code and it shows the different behavor of the recovery methods (LI, Reset, ER) compared with the Nan-fault methode (NF) when killing 4 processes
+in different iterations 
 
 
 #+ATTR_HTML:width 75% :height 75% 
