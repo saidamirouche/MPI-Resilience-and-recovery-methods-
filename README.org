@@ -362,11 +362,19 @@ mpirun -am ft-enable-mpi -np 6 resilient 2 >> er.txt
 mpirun -am ft-enable-mpi -np 6 resilient 0 >> nf.txt
 #+end_example
 
-this plot was done by [[https://doc.ubuntu-fr.org/octave][OCTAVE]], using a [[https://github.com/samirouche/ft_uflm/blob/master/graphe.m][script]] to plot from different outputs of the source code and it shows the different behavor of the recovery methods (LI, Reset, ER) compared with the Nan-fault methode (NF) when killing 4 processes
-in different iterations 
+there plots were done by [[https://doc.ubuntu-fr.org/octave][OCTAVE]], using a [[https://github.com/samirouche/ft_uflm/blob/master/graphe.m][script]] to plot from different outputs of the source code and it shows the different behavor of the recovery methods (LI, Reset, ER) compared with the Nan-fault methode (NF) when killing 4 processes
+in different iterations and seeing the necessair number of iterations or the necessair time to converge 
+
+***** The convergence  in order of number of iterations
+
+[[https://github.com/samirouche/ft_uflm/blob/master/Results_resilience/iteration.jpg]]
 
 
-[[https://github.com/samirouche/ft_uflm/blob/master/Results_resilience/graph_1.jpg]]
+***** The convergence  in order of execution time
+
+[[https://github.com/samirouche/ft_uflm/blob/master/Results_resilience/time.jpg]]
+
+
 
 **** Questions about ULFM
 
@@ -379,22 +387,6 @@ make
 #+end_example
 
 
-- Killing the same processes for the second time :
-
-  + despite that the other processes has knowledge for the victim rank each time ( broadcasting it each time ), in line 433 of [[https://github.com/samirouche/ft_uflm/blob/master/ft_src/contre_examples/double_kill.c][this code]] i've tried to kill many times the same process but i get this error
-
-#+begin_example
-mpirun -am ft-enable-mpi -np 6  double_kill
-#+end_example
-
-***** error :
-
-#+begin_example
-[b83ce537a2eb:00001] [[730,0],0] ORTE_ERROR_LOG: A message is attempting to be sent to a process whose contact information is unknown in file base/odls_base_default_fns.c at line 2069
-[b83ce537a2eb:00001] [[730,0],0] ORTE_ERROR_LOG: A message is attempting to be sent to a process whose contact information is unknown in file orted/orted_comm.c at line 1174
-#+end_example
-
-    
 - Killing a process before the All_Reduce step : 
 
   + i added a suicide senario in [[https://github.com/samirouche/ft_uflm/blob/master/ft_src/contre_examples/before_allreduce.c][this code]] before ALL_Reduce in the line 403 and 426 , when i run i got this error
@@ -410,22 +402,6 @@ mpirun -am ft-enable-mpi -np 6  before_allreduce
 [b83ce537a2eb:00001] [[730,0],0] ORTE_ERROR_LOG: A message is attempting to be sent to a process whose contact information is unknown in file orted/orted_comm.c at line 1174
 #+end_example
 
-
-- measure the time with MPI_Wtime() after killing a process
-
-  + in order to calculate the necessary time for the convergency , i summed each time the time elapsed after each iteration, but once the first suicide happens it shows me errors
-as [[https://github.com/samirouche/ft_uflm/blob/master/ft_src/contre_examples/time_ulfm.c][showen in this code]] in the lines 314 and 467. and the errors in execution 
-
- #+begin_example
-mpirun -am ft-enable-mpi -np 6  time_ulfm
-#+end_example
-
-***** error :
-
-#+begin_example
-[b83ce537a2eb:00001] [[730,0],0] ORTE_ERROR_LOG: A message is attempting to be sent to a process whose contact information is unknown in file base/odls_base_default_fns.c at line 2069
-[b83ce537a2eb:00001] [[730,0],0] ORTE_ERROR_LOG: A message is attempting to be sent to a process whose contact information is unknown in file orted/orted_comm.c at line 1174
-#+end_example
 
 
 and i'm wonder if there is a way to know the dead processes from the recovery precedure and not from testings of communications after each Isend/Irecv?
