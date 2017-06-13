@@ -6,7 +6,7 @@
 #include <mpi-ext.h>
 #include <stdlib.h>
 
-//
+
 int rank=MPI_PROC_NULL, verbose=0; 
 char** gargv;
 
@@ -121,7 +121,8 @@ int skip_first_suicide = 0;
 void static_data(int first, int last, int rank, int size,double xlocal[(12/4)+2][12]) {         // Recovery schemes for static Data
 
   int i, j;
-  
+  skip_first_suicide = 1;
+
   for (i=1; i<=maxn/size; i++) 
 	for (j=0; j<maxn; j++) 
 	    xlocal[i][j] = rank;
@@ -145,7 +146,7 @@ char s[10];
     
     
     fprintf(file, "%d \n", count );
-    for (i = 0; i <(12/4)+2; i++) {
+    for (i = 1; i <=(12/4); i++) {
         for (j = 0; j < 12; j++)
             {
                 fprintf (file, "%f\n", local[i][j]);
@@ -169,7 +170,7 @@ int recovery_data(double local[(12/4)+2][12],int rank) {
 
   fscanf(fp,"%d",&recov_it);
       
-  for (i = 0; i < (12/4)+2; i++) {
+  for (i = 1; i <=(12/4); i++) {
     for (j = 0; j < 12; j++) {
       if (!fscanf(fp,"%lf",&local[i][j]))
 	break;
@@ -187,6 +188,8 @@ void LI_data(int first, int last, double xlocal[(12/4)+2][12]) {
   int k=0,i,j;
   double diffnorm;
   double     xnew[(12/3)+2][12];
+
+  skip_first_suicide = 1;
 
   do {
     k = k+1;
@@ -233,7 +236,10 @@ void ER_strategie(int dead, int rank, double xlocal[(12/4)+2][12],MPI_Comm comm)
 void LI_strategie(int dead, int first, int last, int rank, int size,double xlocal[(12/4)+2][12],MPI_Comm world) {
 
   MPI_Status status;
+
   
+    skip_first_suicide = 1;
+
   if (rank==dead) {
     static_data(first, last, rank, size, xlocal);               // Reset les données pour le processus mort      
   }
@@ -333,6 +339,8 @@ char **argv;
     itcnt = 0;
     
     do {
+
+      t1 = MPI_Wtime();
       
       if (c == 2)
 	save_dat(itcnt,xlocal,rank);
@@ -368,7 +376,6 @@ char **argv;
 	for(i=0;i<size;i++) {
 	  if ((i !=rank) || (i!=dead)) {
 	    MPI_Isend( &dead, 1, MPI_INT, i, 0,   world,&request);
-	    MPI_Isend( &me, 1, MPI_INT, i, 0,   world,&request);
 
 	  }
 	  } 
@@ -397,7 +404,6 @@ char **argv;
 
 	if( (MPI_ERR_PROC_FAILED == rc) || (MPI_ERR_PENDING == rc) ) {
 	  MPI_Irecv( &dead, 1, MPI_INT,MPI_ANY_SOURCE, 0,   world,&request);
-	  MPI_Irecv( &me, 1, MPI_INT,MPI_ANY_SOURCE, 0,   world,&request);
 	  MPIX_Comm_replace( world, &rworld );                      // appeller la fonction de réparation et remplacer le communicateur érroné avec le nouveau 
 	  MPI_Comm_free( &world );                                  // et commencer la partie de recovery 
 	  world = rworld;
@@ -405,10 +411,13 @@ char **argv;
 	  
 	  goto reprise;
 	  } 
-	
+       	gdiffnorm = sqrt( gdiffnorm );
 
-	gdiffnorm = sqrt( gdiffnorm );
-	if (rank == 0) printf("%e %d\n",gdiffnorm, itcnt);
+	t2 = MPI_Wtime();
+
+	t = t + (t2-t1);
+
+	if (rank == 0) printf("%e %d %lf\n",gdiffnorm, itcnt,t);
 
     } while (gdiffnorm > 1.0e-13 && itcnt < 10000);
 
@@ -418,7 +427,8 @@ char **argv;
  reprise:
 
 
-    
+    t1 = MPI_Wtime();
+
      MPI_Bcast(&dead, 1, MPI_INT, 0, world);
      
      
@@ -428,28 +438,31 @@ char **argv;
     if (rank == size - 1) i_last--;
 
 
-    if (rank==0)
-      MPI_Send( &itcnt, 1, MPI_INT, dead, 0, 
-		  world );
-    else if (rank==dead)
-       MPI_Recv( &itcnt, 1, MPI_INT, 0, 0, 
-		       world, &status );
-    
 
-    itcnt = itcnt-1;
     
     if (c == 1)
-    reset_strategie(dead, i_first, i_last, rank, size,xlocal);
+      reset_strategie(dead, i_first, i_last, rank, size,xlocal);
     else if (c==2)
-    ER_strategie(dead,  rank,  xlocal,world);
+      ER_strategie(dead,  rank,  xlocal,world);
     else if (c==3)
-    LI_strategie(dead, i_first, i_last, rank, size,xlocal,world);
+      LI_strategie(dead, i_first, i_last, rank, size,xlocal,world);
 
+    if (rank==0)
+      MPI_Send( &itcnt, 1, MPI_INT, dead, 0, 
+		world );
+    else if (rank==dead)
+      MPI_Recv( &itcnt, 1, MPI_INT, 0, 0, 
+		world, &status );
 
+    itcnt = itcnt-1;
+    t2 = MPI_Wtime();
+
+    t = t + (t2-t1);
 
     do {
       /* Send up unless I'm at the top, then receive from below */
       /* Note the use of xlocal[i] for &xlocal[i][0] */
+    t1 = MPI_Wtime();
 
       if (c==2)
 	save_dat(itcnt,xlocal,rank);
@@ -477,7 +490,6 @@ char **argv;
 	for(i=0;i<size;i++) {
 	  if ((i !=rank) || (i!=dead)) {
 	    MPI_Isend( &dead, 1, MPI_INT, i, 0,   world,&request);
-	    MPI_Isend( &me, 1, MPI_INT, i, 0,   world,&request);
 
 	  }
 	} 
@@ -508,7 +520,6 @@ char **argv;
 	
 	if( (MPI_ERR_PROC_FAILED == rc) || (MPI_ERR_PENDING == rc) ) {
 	  MPI_Irecv( &dead, 1, MPI_INT,MPI_ANY_SOURCE, 0,   world,&request);
-	  MPI_Irecv( &me, 1, MPI_INT,MPI_ANY_SOURCE, 0,   world,&request);
 
 	  MPIX_Comm_replace( world, &rworld );                      // appeller la fonction de réparation et remplacer le communicateur érroné avec le nouveau 
 	  MPI_Comm_free( &world );                                  // et commencer la partie de recovery 
@@ -521,29 +532,37 @@ char **argv;
 	
 	if ((rank == 2) && (itcnt == 120)) {
 	  
-	    exit(0);
-	 
+	   
+	  if( 0 == skip_first_suicide ) {
+                exit(-1);
+            }
+            skip_first_suicide = 0;
 	}
 	
 	if ((rank == 4) && (itcnt == 130)) {
 
-	   exit(0);
-	 
+	  if( 0 == skip_first_suicide ) {
+	    exit(-1);
+	  }
+	  skip_first_suicide = 0;
 	}
 
 	if ((rank == 3) && (itcnt == 140)) { 
 
-	   exit(0);
-	 
+	  if( 0 == skip_first_suicide ) {
+	    exit(-1);
+	  }
+	  skip_first_suicide = 0;
+
 	}
 
 	gdiffnorm = sqrt( gdiffnorm );
 
-	
-	if (rank == 0) printf("%e %d\n",gdiffnorm, itcnt);
+	 t2 = MPI_Wtime();
+
+	 t = t + (t2-t1);
+	 if (rank == 0) printf("%e %d %lf\n",gdiffnorm, itcnt,t);
 
     } while (gdiffnorm > 1.0e-13 && itcnt < 10000);
     
-    return 0;
 }
-
