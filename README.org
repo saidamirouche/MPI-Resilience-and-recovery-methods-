@@ -350,6 +350,15 @@ strategies, by changing in the execution parameter :
 mpirun -am ft-enable-mpi -np 6 resilient 0  # for the NF methode
 #+end_example
 
+** MPI_Comm_Agree utilities and cost
+
+the ULFM function MPI_Comm_Agree is known as a function that cost too much, in order to propagate the failure to all the survival processess and to set an agreement over a binary value and to synchronise between them
+in this graph it demonstrates the difference in time execution of the version that doesn't containt faults  with the use of MPI_Comm_agree and without it 
+
+***** the Costy methode to set an agreement over all the processess
+
+[[https://github.com/samirouche/ft_uflm/blob/master/Results_resilience/agree.jpg]]
+
 For the previous examples, killing a process was made by simulating its death from inside the application with "exit(0)", the main propose for Resilient MPI
 support is to manage to rebuilt the communicator and continue working after a real externe failure or node crash, to do so a different tests were set, by injecting
  faults  within the execution of the different typs of recovery in different iterations, just to compare the efficacity of the methods after reconstructing the communicator, the condition of convergency is set to 10.e-14 and we compare 
@@ -362,17 +371,23 @@ mpirun -am ft-enable-mpi -np 6 resilient 2 >> er.txt
 mpirun -am ft-enable-mpi -np 6 resilient 0 >> nf.txt
 #+end_example
 
-there plots were done by [[https://doc.ubuntu-fr.org/octave][OCTAVE]], using a [[https://github.com/samirouche/ft_uflm/blob/master/graphe.m][script]] to plot from different outputs of the source code and it shows the different behavor of the recovery methods (LI, Reset, ER) compared with the Nan-fault methode (NF) when killing 4 processes
+
+****** two other graphes were added which represent the non faulty and a relaxed methode of jacobi (bouth without agreement - MPI_Comm_Agree)   
+
+
+there plots were done by [[https://doc.ubuntu-fr.org/octave][OCTAVE]], using a [[https://github.com/samirouche/ft_uflm/blob/master/graphe.m][script]] to plot from different outputs of the source code and it shows the different behavor of the recovery methods (LI, Reset, ER) compared with the Nan-fault methode (NF) and the relaxed one, when killing 4 processes
 in different iterations and seeing the necessair number of iterations or the necessair time to converge 
 
 ***** The convergence  in order of number of iterations
 
-[[https://github.com/samirouche/ft_uflm/blob/master/Results_resilience/nbr_iter.jpg]]
+[[https://github.com/samirouche/ft_uflm/blob/master/Results_resilience/relax_itr.jpg]]
 
 
 ***** The convergence  in order of execution time
 
-[[https://github.com/samirouche/ft_uflm/blob/master/Results_resilience/timees.jpg]]
+[[https://github.com/samirouche/ft_uflm/blob/master/Results_resilience/relax_time.jpg]]
+
+
 
 
 
