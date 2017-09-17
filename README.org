@@ -390,34 +390,3 @@ in different iterations and seeing the necessair number of iterations or the nec
 
 
 
-
-**** Questions about ULFM
-
-the 4 code sources here represent some fail cases,  i puted a comment in a CAPITAL letters to regonize what makes it wrong , here's each situation with the number of the line in the source code 
-where the modifications are set : 
-
-#+begin_example
-cd contre_examples/
-make
-#+end_example
-
-
-- Killing a process before the All_Reduce step : 
-
-  + i added a suicide senario in [[https://github.com/samirouche/ft_uflm/blob/master/ft_src/contre_examples/before_allreduce.c][this code]] before ALL_Reduce in the line 403 and 426 , when i run i got this error
-
- #+begin_example
-mpirun -am ft-enable-mpi -np 6  before_allreduce
-#+end_example
-
-***** error :
-
-#+begin_example
-[b83ce537a2eb:00001] [[730,0],0] ORTE_ERROR_LOG: A message is attempting to be sent to a process whose contact information is unknown in file base/odls_base_default_fns.c at line 2069
-[b83ce537a2eb:00001] [[730,0],0] ORTE_ERROR_LOG: A message is attempting to be sent to a process whose contact information is unknown in file orted/orted_comm.c at line 1174
-#+end_example
-
-
-
-and i'm wonder if there is a way to know the dead processes from the recovery precedure and not from testings of communications after each Isend/Irecv?
- 
