@@ -9,6 +9,7 @@
 
 int rank=MPI_PROC_NULL, verbose=0; 
 char** gargv;
+char p = '1';
 
 int MPIX_Comm_replace(MPI_Comm comm, MPI_Comm *newcomm) {
     MPI_Comm icomm,
@@ -22,8 +23,9 @@ redo:
         MPI_Comm_get_parent(&icomm);
         scomm = MPI_COMM_WORLD;
         MPI_Recv(&crank, 1, MPI_INT, 0, 1, icomm, MPI_STATUS_IGNORE);
-	
-       if( verbose ) {
+
+
+      if( verbose ) {
             MPI_Comm_rank(scomm, &srank);
             printf("Spawnee %d: crank=%d\n", srank, crank);
         }
@@ -41,13 +43,13 @@ redo:
             *newcomm = comm;
             return MPI_SUCCESS;
         }
-        
+       
         MPI_Comm_set_errhandler( scomm, MPI_ERRORS_RETURN );
 
         rc = MPI_Comm_spawn(gargv[0], &gargv[1], nd, MPI_INFO_NULL,
                             0, scomm, &icomm, MPI_ERRCODES_IGNORE);
         flag = (MPI_SUCCESS == rc);
-        MPIX_Comm_agree(scomm, &flag);
+	MPIX_Comm_agree(scomm, &flag);
         if( !flag ) {
             if( MPI_SUCCESS == rc ) {
                 MPIX_Comm_revoke(icomm);
@@ -95,7 +97,7 @@ redo:
     rc = MPI_Comm_split(mcomm, 1, crank, newcomm);
     //réordre  le communicateur selon l'orignale dans World
     flag = (MPI_SUCCESS==rc);
-    MPIX_Comm_agree(mcomm, &flag);
+     MPIX_Comm_agree(mcomm, &flag);
     MPI_Comm_free(&mcomm);
     if( !flag ) {
         if( MPI_SUCCESS == rc ) {
@@ -348,9 +350,10 @@ char **argv;
     char s[10];
 
 
-    
+   
     jeton = 1;
     gargv = argv;
+    
     MPI_Init( &argc, &argv );
 
 
@@ -360,7 +363,7 @@ char **argv;
 
      MPI_Comm_get_parent( &world );
      
-    if( MPI_COMM_NULL == world ) {
+    if( MPI_COMM_NULL == world  ) {
       // on initialise notre communicateur 
       MPI_Comm_dup( MPI_COMM_WORLD, &world );
       MPI_Comm_size( world, &size );
@@ -376,6 +379,24 @@ char **argv;
       MPI_Comm_rank( world, &rank );
       MPI_Comm_set_errhandler( world, MPI_ERRORS_RETURN );
       dead_loc = rank;
+
+      fp = fopen("info.txt","r");
+      fscanf(fp,"%d %lf %lf \n", &itcnt,&t,&gdiffnorm);
+      fclose(fp);
+
+
+      fp = fopen("dead.txt", "a");
+      fprintf(fp, "%e %d %lf %d\n",gdiffnorm, itcnt-1,t,rank); ;
+      fclose(fp);
+
+     
+      if (c == 1)
+	reset_strategie(rank, i_first, i_last, rank, size,xlocal);                    // Choosing the recovery strategie as a input parametre 
+      else if (c==2) 
+       
+	ER_strategie(rank, rank,  xlocal,world);
+       
+   
       goto reprise;
     }
 
@@ -385,7 +406,7 @@ char **argv;
     if (rank == size - 1) i_last--;
 
     if (rank==0){
-       sprintf(s,"dead.txt"); 
+      sprintf(s,"dead.txt"); 
       fp = fopen(s, "w");
       fclose(fp);
     }
@@ -393,10 +414,12 @@ char **argv;
     int victim;                                                                     //Un processus qui se suicide
     srand (time(NULL));
     victim = (rand()%(size-1))+ 1;
-    victim = 1;
+    victim =1;
     t = 0;
     ts = 0;
-   
+    
+    t1 = MPI_Wtime();
+
     for (i=1; i<=maxn/size; i++) 
       for (j=0; j<maxn; j++) 
 	xlocal[i][j] = rank;
@@ -411,40 +434,49 @@ char **argv;
     
     do {
 
-      t1 = MPI_Wtime();
       
       if (c == 2)
 	save_dat(itcnt,xlocal,rank);
 
-      if((rank == victim)  && (itcnt == 100)) {
+      if((rank == 1)  && (itcnt == 100)) {
 
-	if (c!=0)
-	  exit(0);
+	if (c!=0) {
+	  	if( 0 == skip_first_suicide ) {
+	  exit(-1);
+	}
+	skip_first_suicide = 0;
+	}
+
       }
       
       if (rank < size - 1) 
-	MPI_Send( xlocal[maxn/size], maxn, MPI_DOUBLE, rank + 1, 0, 
-		  world );
+	rc = MPI_Send( xlocal[maxn/size], maxn, MPI_DOUBLE, rank + 1, 0, 
+		       world );
+     
+
     
       
       /* Send down unless I'm at the bottom */
       if (rank > 0) 
-	MPI_Send( xlocal[1], maxn, MPI_DOUBLE, rank - 1, 1, 
-		  world );
+	rc = MPI_Send( xlocal[1], maxn, MPI_DOUBLE, rank - 1, 1, 
+		       world );
+  	
       if (rank < size - 1)   
 	rc = MPI_Recv( xlocal[maxn/size+1], maxn, MPI_DOUBLE, rank + 1, 1, 
 		       world, &status );
 
       flag = (rc == MPI_SUCCESS);                                      //*ULFM* Detects process failure and informe all the others about the error 
-      MPIX_Comm_agree(world, &flag);
+       MPIX_Comm_agree(world, &flag);
       
 
-        if (rank > 0)
+      if (rank > 0)
 	rc =MPI_Recv( xlocal[0], maxn, MPI_DOUBLE, rank - 1, 0, 
-		  world, &status );
+		      world, &status );
+     
+	  
    
       flag = (rc == MPI_SUCCESS);                                      //*ULFM* Detects process failure and informe all the others about the error 
-      MPIX_Comm_agree(world, &flag);
+       MPIX_Comm_agree(world, &flag);
       
 	/* Compute new values (but not on boundary) */
 	itcnt ++;
@@ -465,11 +497,18 @@ char **argv;
 	rc = MPI_Allreduce( &diffnorm, &gdiffnorm, 1, MPI_DOUBLE, MPI_SUM,
 			    world );
 
+	
 	if( (MPI_ERR_PROC_FAILED == rc) || (MPI_ERR_PENDING == rc) ) {
 	  dead_loc=0;
 
-	  flag = (rc == MPI_SUCCESS);
-	  MPIX_Comm_agree(world, &flag);
+	  sprintf(s,"info.txt"); 
+	  fp = fopen(s, "w");
+	  fprintf(fp, "%d %lf %e\n", itcnt,t,gdiffnorm); ;
+	  fclose(fp);
+      
+
+    	  flag = (rc == MPI_SUCCESS);
+	  //	  MPIX_Comm_agree(world, &flag);
 	  if( !flag ) {
 	    MPIX_Comm_replace( world, &rworld );                      // Call the communicator fixing function ( shrink, spawn and reconstruct the COMM 
 	    MPI_Comm_free( &world );                                  // and get back to recovery (reprise
@@ -481,7 +520,8 @@ char **argv;
 
 	t2 = MPI_Wtime();
 
-	t = t + (t2-t1);
+	t =  (t2-t1);
+	
 
 	if (rank == 0) printf("%e %d %lf\n",gdiffnorm, itcnt,t);
 
@@ -491,84 +531,42 @@ char **argv;
     return 0;
     
  reprise:
-
-
-    // printf("im the dead localy %d %d\n",sz,rank);
-    MPI_Allreduce(&dead_loc, &dead, 1, MPI_INT, MPI_SUM,  world );
-
-    
-    t1 = MPI_Wtime();
-
-
     
 
-    if (dead!=0)                               // replicate the capability of centralizer, if the dead process is 0
-      informer= 0;                                         // then the process responsable of informing the others of the dead one
-    else                                            // is picked randomly from the survivor processes
-      informer = size-1;
+     MPI_Allreduce(&dead_loc, &dead, 1, MPI_INT, MPI_SUM,  world );
+
+     // printf("%d :  iteration : %d  \n", rank,itcnt);
+
     
-    if (rank ==informer) {                                     // save informations about the dead processess and recovery informations
-      sprintf(s,"dead.txt"); 
-      fp = fopen(s, "a");
-      fprintf(fp, "%e %d %lf %d\n",gdiffnorm, itcnt,t,dead); ;
-      fclose(fp);
-
-    }
-      
-
-     
     i_first = 1;
     i_last  = maxn/size;
     if (rank == 0)        i_first++;
     if (rank == size - 1) i_last--;
 
-    
-    if (c == 1)
-      reset_strategie(dead, i_first, i_last, rank, size,xlocal);                    // Choosing the recovery strategie as a input parametre 
-    else if (c==2) 
-       
-      ER_strategie(dead, rank,  xlocal,world);
-    else if (c==3)
-      LI_strategie(dead, i_first, i_last, rank, size,xlocal,world);
+ 
+    if(c==3)
+	LI_strategie(dead, i_first, i_last, rank, size,xlocal,world);
+      
 
    
-    if (rank==informer){
-      MPI_Send( &itcnt, 1, MPI_INT, dead, 0,          // the informer process annonce the collectif number of iteration to the dead one to be synchronised
-		world );                              // with the other survival processes
-
-      MPI_Send( &t, 1, MPI_DOUBLE, dead, 0,          // the informer process annonce the collectif number of iteration to the dead one to be synchronised and the time of execution
-	       world ); }                       
-     
-    else if (rank==dead) {
-      MPI_Recv( &itcnt, 1, MPI_INT, informer, 0, 
-		world, &status );
-      MPI_Recv( &t, 1, MPI_DOUBLE, informer, 0, 
-	      world, &status ); }
+    // itcnt = itcnt-2;                                 // redoing a previous iteration after recovery (reprise)
     
-    
-    itcnt = itcnt-2;                                 // redoing a previous iteration after recovery (reprise)
-    t2 = MPI_Wtime();
-
-    t = t + (t2-t1);                                  // Execution Time calcul
-
     do {
                                                       /* Send up unless I'm at the top, then receive from below */
                                                       /* Note the use of xlocal[i] for &xlocal[i][0] */
-      t1 = MPI_Wtime();
-
-     
-        
+ 
       if (c==2)
-	save_dat(itcnt,xlocal,rank);                 // in case the recovery strategie chosen is ER , each process save its data in a file in each iteration
+	save_dat(itcnt,xlocal,rank);                  // in case the recovery strategie chosen is ER , each process save its data in a file in each iteration
 
       
       if (rank < size - 1) 
 	rc = MPI_Send( xlocal[maxn/size], maxn, MPI_DOUBLE, rank + 1, 0, 
 		       world );
+     
       
-      flag = (rc == MPI_SUCCESS);
+      /* flag = (rc == MPI_SUCCESS);
     
-      MPIX_Comm_agree(world, &flag);
+	 MPIX_Comm_agree(world, &flag);*/
   
 
       /* Send down unless I'm at the bottom */
@@ -576,20 +574,24 @@ char **argv;
 	rc = MPI_Send( xlocal[1], maxn, MPI_DOUBLE, rank - 1, 1, 
 		       world );
 
+     
+      
       flag = (rc == MPI_SUCCESS);
-      if(!flag)
-	MPIX_Comm_agree(world, &flag);
+      /*   if(!flag)
+	   MPIX_Comm_agree(world, &flag);*/
       
      
       
       if (rank < size - 1) 
 	rc = MPI_Recv( xlocal[maxn/size+1], maxn, MPI_DOUBLE, rank + 1, 1, 
 		       world, &status );
-
+    
+	
+      
       
       flag = (rc == MPI_SUCCESS);
-       if(!flag)
-	MPIX_Comm_agree(world, &flag);
+      /*    if(!flag)
+	    MPIX_Comm_agree(world, &flag);*/
      
 	   
        
@@ -597,22 +599,35 @@ char **argv;
 	rc = MPI_Recv( xlocal[0], maxn, MPI_DOUBLE, rank - 1, 0,    // Communications between neighboor processes for exchanging data
 		       world, &status );
 
-    
-       flag = (rc == MPI_SUCCESS);
-       if(!flag)
-	 
-	 MPIX_Comm_agree(world, &flag);                                  // *ULFM* Detects process failure and informe all the others about the error 
-
+       
 
        
-         if ((rank == 4) && (itcnt == 150) ) {                    
+       flag = (rc == MPI_SUCCESS);
+       //   if(!flag)
+	 
+	 //  MPIX_Comm_agree(world, &flag);                                 // *ULFM* Detects process failure and informe all the others about the error 
+
+      
+      
+        if ((rank == 3) && (itcnt == 200) ) {                    
 	                                                          
 	if( 0 == skip_first_suicide ) {
 	  exit(-1);
 	}
 	skip_first_suicide = 0;
 
-      }
+	}
+
+	if ((rank == 0) && (itcnt == 300) ) {                    
+	                                                          
+	if( 0 == skip_first_suicide ) {
+	  exit(-1);
+	}
+	skip_first_suicide = 0;
+
+	}
+	
+       
  
        /* -------------------------------1-----------------------------------
       
@@ -633,22 +648,6 @@ char **argv;
 	   xlocal[i][j] = xnew[i][j];
 
 
-       /*
-	                                                     /* ULFM - When i uncomment this section to Kill the same process more then one time
- if ((rank == 2) && (itcnt == 220) ) {                          it blocks and shows errors in the executions 
-	                                                          
-	if( 0 == skip_first_suicide ) {
-	  exit(-1);
-	}
-	skip_first_suicide = 0;
-
-	} */
-      
-       /* -------------------------------2-----------------------------------*/
-      
-
-       /* Since there is no communications between the sections 1 & 2, if a process commit suicide between the 2 sections, no one will know who died and it blocks */
-
        
 
 
@@ -661,8 +660,16 @@ char **argv;
 
 	 dead_loc=0;
 
-	 flag = (rc == MPI_SUCCESS);                                // Informe everybody about the fault and ask for recover steps
-	 MPIX_Comm_agree(world, &flag);
+	 sprintf(s,"info.txt"); 
+	 fp = fopen(s, "w");
+	 fprintf(fp, "%d %lf %e\n", itcnt,t,gdiffnorm); 
+
+	 fclose(fp);
+      
+
+	 	 flag = (rc == MPI_SUCCESS);                                // Informe everybody about the fault and ask for recover steps
+		 //	 MPIX_Comm_agree(world, &flag);
+	 
 
 	 if( !flag ) {
 	   MPIX_Comm_replace( world, &rworld );                      // Call the communicator fixing function ( shrink, spawn and reconstruct the COMM 
@@ -672,8 +679,9 @@ char **argv;
 	 }
 	  
        }
-	
-  if ((rank == 2) && (itcnt == 190) ) {                    
+
+       
+  if ((rank == 4) && (itcnt == 400) ) {                    
 	                                                          
 	if( 0 == skip_first_suicide ) {
 	  exit(-1);
@@ -681,29 +689,21 @@ char **argv;
 	skip_first_suicide = 0;
 
       }
-
-
-   if ((rank == 3) && (itcnt == 200) ) {                    
-	                                                          
-	if( 0 == skip_first_suicide ) {
-	  exit(-1);
-	}
-	skip_first_suicide = 0;
-
-      }
-     
+       
+  
+       
        gdiffnorm = sqrt( gdiffnorm );                           // Calculate the residus 
 
        t2 = MPI_Wtime();
 
-       t = t + (t2-t1);
-       if (rank == 5) printf("%e %d %lf\n",gdiffnorm, itcnt,t);
+       t = t2-t1;
 
-       MPI_Barrier(world);
+       if (rank == 7) printf("%e %d %lf\n",gdiffnorm, itcnt,t);
 
-    } while (gdiffnorm > 1.0e-13 && itcnt < 10000);
+       // MPI_Barrier(world);
 
+       //  } while (itcnt < 100000);
+         } while (gdiffnorm > 1.0e-13 && itcnt < 10000);
 
 
 }
-
